@@ -2,10 +2,10 @@ package com.postcodelotterychecker
 
 import java.io.File
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
 
-import com.google.api.client.repackaged.org.apache.commons.codec.binary.{Base64, StringUtils}
-import com.google.api.services.gmail.Gmail
-import com.google.api.services.gmail.model.Message
+import com.ditcherj.contextio.dto.Message
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.collection.JavaConverters._
@@ -14,14 +14,14 @@ import scala.sys.process._
 
 class PostcodeChecker(config: Config) extends StrictLogging {
 
-  private val service = GmailLoader.getGmailService
-  private val user = "me"
-
+  val todaysDate = new SimpleDateFormat("dd/MM/yyyy").format(new Date())
+  val emailClient = new EmailClient(config.contextIOConfig, config.emailerConfig)
 
   def startWithEmailChecker = {
     logger.info("Starting using email checker")
-    val message = getMostRecentMessage
-    val webAddress = getWebAddressFromMessage(message)
+    val messageBody = emailClient.getMostRecentMessageBody
+    val webAddress = getWebAddressFromMessage(messageBody)
+    logger.info(s"Web address $webAddress found in email")
     processWebAddress(webAddress)
   }
 
@@ -33,7 +33,7 @@ class PostcodeChecker(config: Config) extends StrictLogging {
 
   private def processWebAddress(webAddress: String) = {
     val outputFileName = "output.png"
-      logger.info(s"Using web address: $webAddress")
+      logger.info(s"Processing web address: $webAddress")
 
       val imageURL = getImageURLFromWebAddress(webAddress)
       logger.info(s"Using image address: $imageURL")
@@ -53,37 +53,32 @@ class PostcodeChecker(config: Config) extends StrictLogging {
 
   private def handleSuccessfulMatch(winningPostcode: String): Unit = {
     logger.info("Successful match!")
-    Emailer.sendEmail(
-      config.emailerConfig.toAddress,
+    val email = Email(
+      s"Postcode Lottery Checker ($todaysDate): WINNING POSTCODE!",
+      s"Postcode $winningPostcode has won!",
       config.emailerConfig.fromAddress,
-      "WINNING POSTCODE!", s"Postcode $winningPostcode has won!", service, user)
+      config.emailerConfig.toAddress
+    )
+    emailClient.sendEmail(email)
   }
 
   private def handleUnsuccessfulMatch(nonWinningPostcode: String) = {
-    Emailer.sendEmail(
-      config.emailerConfig.toAddress,
+
+    logger.info("Unsuccessful match!")
+    val email = Email(
+      s"Postcode Lottery Checker ($todaysDate): You have not won",
+      s"Today's winning postcode was $nonWinningPostcode. You have not won.",
       config.emailerConfig.fromAddress,
-      "You have not won", s"Today's winning postcode was $nonWinningPostcode", service, user)
+      config.emailerConfig.toAddress
+    )
+    emailClient.sendEmail(email)
   }
 
-  private def getMostRecentMessage: Message = {
-    println(service.users.messages().list(user).execute().getMessages.asScala)
-    val msgIds = service.users.messages().list(user).execute().getMessages.asScala.map(_.getId)
-    val messages = msgIds.map(msgId => {
-      service.users().messages().get(user, msgId)
-        .setFormat("FULL")
-        .execute()
-    })
-    val mostRecentMessage = messages.filter(messages => messages.getLabelIds.asScala.contains("INBOX")).sortBy(msg => msg.getInternalDate).reverse.head
-    logger.info(s"ID of most recent message is ${mostRecentMessage.getId}")
-    mostRecentMessage
-  }
+  private def getWebAddressFromMessage(messageBody: String): String = {
 
-  private def getWebAddressFromMessage(message: Message): String = {
-    val msgLines = message.getPayload.getParts.asScala.foldLeft("")((acc, part) => {
-      val str = Base64.decodeBase64(part.getBody.getData)
-      acc + StringUtils.newString(str, "UTF-8")
-    }).split("\n")
+    println(s"Message body: $messageBody")
+
+    val msgLines = messageBody.split("\n")
     val webAddressLine = msgLines.indexWhere(_.startsWith("See if you're a winner")) match {
       case -1 => throw new RuntimeException("Line 'See if you're a winner' not found in email")
       case n => n + 1

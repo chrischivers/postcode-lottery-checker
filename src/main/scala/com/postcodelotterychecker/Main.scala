@@ -6,7 +6,7 @@ object Main extends App with StrictLogging {
 
   def start {
     val postcodeChecker = new PostcodeChecker(ConfigLoader.defaultConfig)
-    postcodeChecker.startWithDirectWebAddress
+    postcodeChecker.startWithEmailChecker
   }
 
   start
