@@ -20,3 +20,22 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
+
+lazy val commonSettings = Seq(
+  version := "1.0",
+  organization := "com.postcodelotterychecker",
+  scalaVersion := "2.11.11",
+  test in assembly := {}
+)
+
+lazy val app = (project in file("app")).
+  settings(commonSettings: _*).
+  settings(
+    mainClass in assembly := Some("com.postcodelotterychecker.Main")
+  )
+
+lazy val utils = (project in file("utils")).
+  settings(commonSettings: _*).
+  settings(
+    assemblyJarName in assembly := "utils.jar"
+  )
