@@ -3,7 +3,7 @@ package com.postcodelotterychecker
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConverters._
 
-case class Config(postcodesToMatch: List[String], visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig)
+case class Config(postcodesToMatch: List[String], visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, directWebAddress: String)
 case class VisionApiConfig(apiKey: String)
 case class EmailerConfig(fromAddress: String, toAddress: String)
 
@@ -20,7 +20,8 @@ object ConfigLoader {
       EmailerConfig(
         defaultConfigFactory.getString("email.fromAddress"),
         defaultConfigFactory.getString("email.toAddress")
-      )
+      ),
+      defaultConfigFactory.getString("directWebAddress")
     )
   }
 }

@@ -14,33 +14,44 @@ import scala.sys.process._
 
 class PostcodeChecker(config: Config) extends StrictLogging {
 
+  private val service = GmailLoader.getGmailService
+  private val user = "me"
 
-  def start = {
-    val service = GmailLoader.getGmailService
-    val user = "me"
-    val outputFileName = "output.png"
 
-    val message = getMostRecentMessage(service, user)
+  def startWithEmailChecker = {
+    logger.info("Starting using email checker")
+    val message = getMostRecentMessage
     val webAddress = getWebAddressFromMessage(message)
-    logger.info(s"Using web address: $webAddress")
-
-    val imageURL = getImageURLFromWebAddress(webAddress)
-    logger.info(s"Using image address: $imageURL")
-
-    writeImageToDisk(imageURL, outputFileName)
-
-    val postCodeFromVisionApi = VisionAPI.makeRequest(outputFileName)
-    logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
-    postCodeFromVisionApi match {
-      case None => logger.error("No postcode returned from vision API")
-      case Some(result) =>
-        if (config.postcodesToMatch contains result) handleSuccessfulMatch(result, service, user)
-        else handleUnsuccessfulMatch(result, service, user)
-    }
+    processWebAddress(webAddress)
   }
 
+  def startWithDirectWebAddress = {
+    logger.info("Starting using direct web address")
+    val webAddress = config.directWebAddress
+    processWebAddress(webAddress)
+  }
 
-  private def handleSuccessfulMatch(winningPostcode: String, service: Gmail, user: String): Unit = {
+  private def processWebAddress(webAddress: String) = {
+    val outputFileName = "output.png"
+      logger.info(s"Using web address: $webAddress")
+
+      val imageURL = getImageURLFromWebAddress(webAddress)
+      logger.info(s"Using image address: $imageURL")
+
+      writeImageToDisk(imageURL, outputFileName)
+
+      val postCodeFromVisionApi = VisionAPI.makeRequest(outputFileName)
+      logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
+      postCodeFromVisionApi match {
+        case None => logger.error("No postcode returned from vision API")
+        case Some(result) =>
+          if (config.postcodesToMatch contains result) handleSuccessfulMatch(result)
+          else handleUnsuccessfulMatch(result)
+      }
+    }
+
+
+  private def handleSuccessfulMatch(winningPostcode: String): Unit = {
     logger.info("Successful match!")
     Emailer.sendEmail(
       config.emailerConfig.toAddress,
@@ -48,14 +59,14 @@ class PostcodeChecker(config: Config) extends StrictLogging {
       "WINNING POSTCODE!", s"Postcode $winningPostcode has won!", service, user)
   }
 
-  private def handleUnsuccessfulMatch(nonWinningPostcode: String, service: Gmail, user: String) = {
+  private def handleUnsuccessfulMatch(nonWinningPostcode: String) = {
     Emailer.sendEmail(
       config.emailerConfig.toAddress,
       config.emailerConfig.fromAddress,
       "You have not won", s"Today's winning postcode was $nonWinningPostcode", service, user)
   }
 
-  private def getMostRecentMessage(service: Gmail, user: String): Message = {
+  private def getMostRecentMessage: Message = {
     println(service.users.messages().list(user).execute().getMessages.asScala)
     val msgIds = service.users.messages().list(user).execute().getMessages.asScala.map(_.getId)
     val messages = msgIds.map(msgId => {
