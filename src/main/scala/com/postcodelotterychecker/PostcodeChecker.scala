@@ -1,6 +1,6 @@
 package com.postcodelotterychecker
 
-import java.io.File
+import java.io.{ByteArrayOutputStream, File}
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,15 +32,17 @@ class PostcodeChecker(config: Config) extends StrictLogging {
   }
 
   private def processWebAddress(webAddress: String) = {
-    val outputFileName = "output.png"
       logger.info(s"Processing web address: $webAddress")
 
       val imageURL = getImageURLFromWebAddress(webAddress)
       logger.info(s"Using image address: $imageURL")
 
-      writeImageToDisk(imageURL, outputFileName)
+//      val source = Source.fromURL(imageURL).reader()
+//      val byteArray = Stream.continually(source.read).takeWhile(_ != -1).map(_.toByte).toArray
 
-      val postCodeFromVisionApi = VisionAPI.makeRequest(outputFileName)
+      val imageByteArray = getByteArrayFromImage(imageURL)
+
+      val postCodeFromVisionApi = VisionAPI.makeRequest(imageByteArray)
       logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
       postCodeFromVisionApi match {
         case None => logger.error("No postcode returned from vision API")
@@ -105,8 +107,29 @@ class PostcodeChecker(config: Config) extends StrictLogging {
     "https://freepostcodelottery.com" + imageUrlSuffix
   }
 
-  private def writeImageToDisk(imageURL: String, outputFileName: String): Unit = {
-    logger.info(s"Attempting to write image file $outputFileName to disk")
-    new URL(imageURL) #> new File(outputFileName) !!
+//  private def writeImageToDisk(imageURL: String, outputFileName: String): Unit = {
+//    logger.info(s"Attempting to write image file $outputFileName to disk")
+//    new URL(imageURL) #> new File(outputFileName) !!
+//  }
+
+  private def getByteArrayFromImage(imageUrl: String): Array[Byte] = {
+
+    val url = new URL(imageUrl)
+    val output = new ByteArrayOutputStream
+      val inputStream = url.openStream
+      try {
+        val buffer = new Array[Byte](1024)
+        var n = inputStream.read(buffer)
+        do {
+          output.write(buffer, 0, n)
+          n = inputStream.read(buffer)
+        } while (n != -1)
+
+      } catch {
+        case e: Exception => logger.error(s"Error converting image to byte array", e)
+      } finally {
+        if (inputStream != null) inputStream.close()
+      }
+    output.toByteArray
   }
 }

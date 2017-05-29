@@ -15,8 +15,8 @@ import scala.io.Source
 
 object VisionAPI extends StrictLogging {
 
-  def makeRequest(imagePath: String) = {
-    val imageBase64 = convertImageToBase64(imagePath)
+  def makeRequest(imageByteArray: Array[Byte]) = {
+    val imageBase64 = convertImageToBase64(imageByteArray)
     val apiResponse = getApiResponse(imageBase64)
     logger.info(s"Vision Api response: $apiResponse")
     parse(apiResponse).toOption.flatMap(json => {
@@ -60,9 +60,8 @@ object VisionAPI extends StrictLogging {
     content
   }
 
-  private def convertImageToBase64(imagePath: String): Array[Byte] = {
-    val bytes = Files.readAllBytes(Paths.get(imagePath))
-    Base64.getEncoder.encode(bytes)
+  private def convertImageToBase64(imageByteArray: Array[Byte]): Array[Byte] = {
+    Base64.getEncoder.encode(imageByteArray)
   }
 }
 
