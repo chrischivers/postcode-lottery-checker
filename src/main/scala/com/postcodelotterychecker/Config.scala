@@ -3,10 +3,12 @@ package com.postcodelotterychecker
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConverters._
 
-case class Config(postcodesToMatch: List[String], visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, contextIOConfig: ContextIoConfig, directWebAddress: String)
+case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, contextIOConfig: ContextIoConfig)
 case class VisionApiConfig(apiKey: String)
+case class PostcodeCheckerConfig(postcodesToMatch: List[String], directWebAddress: String)
+case class DinnerCheckerConfig(usernamesToMatch: List[String], directWebAddress: String)
 case class EmailerConfig(fromAddress: String, toAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
-case class ContextIoConfig(clientKey: String, secret: String, accountId: String)
+case class ContextIoConfig(clientKey: String, secret: String, accountId: String, readRetries: Int, timeBetweenRetries: Long)
 
 
 object ConfigLoader {
@@ -15,7 +17,14 @@ object ConfigLoader {
 
   val defaultConfig: Config = {
     Config(
-      defaultConfigFactory.getStringList("postcodesToMatch").asScala.toList,
+      PostcodeCheckerConfig(
+        defaultConfigFactory.getStringList("postcodeChecker.postcodesToMatch").asScala.toList,
+        defaultConfigFactory.getString("postcodeChecker.directWebAddress")
+      ),
+      DinnerCheckerConfig(
+        defaultConfigFactory.getStringList("dinnerChecker.usernamesToMatch").asScala.toList,
+        defaultConfigFactory.getString("dinnerChecker.directWebAddress")
+      ),
       VisionApiConfig(
         defaultConfigFactory.getString("visionApiKey")
       ),
@@ -30,9 +39,10 @@ object ConfigLoader {
       ContextIoConfig(
         defaultConfigFactory.getString("contextIO.clientKey"),
         defaultConfigFactory.getString("contextIO.secret"),
-        defaultConfigFactory.getString("contextIO.accountId")
-      ),
-      defaultConfigFactory.getString("directWebAddress")
+        defaultConfigFactory.getString("contextIO.accountId"),
+        defaultConfigFactory.getInt("contextIO.readRetries"),
+        defaultConfigFactory.getLong("contextIO.timeBetweenRetries")
+      )
     )
   }
 }

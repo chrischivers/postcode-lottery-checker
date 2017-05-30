@@ -1,16 +1,11 @@
 package com.postcodelotterychecker
 
-import java.io.{ByteArrayOutputStream, File}
+import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
-
-import com.ditcherj.contextio.dto.Message
 import com.typesafe.scalalogging.StrictLogging
-
-import scala.collection.JavaConverters._
-import scala.io.Source
-import scala.sys.process._
+import scalaj.http.{Http, HttpOptions}
 
 class PostcodeChecker(config: Config) extends StrictLogging {
 
@@ -19,26 +14,23 @@ class PostcodeChecker(config: Config) extends StrictLogging {
 
   def startWithEmailChecker = {
     logger.info("Starting using email checker")
-    val messageBody = emailClient.getMostRecentMessageBody
+    val messageBody = emailClient.getMostRecentMessageBody("Draw Alert")
     val webAddress = getWebAddressFromMessage(messageBody)
     logger.info(s"Web address $webAddress found in email")
-    processWebAddress(webAddress)
+    getPostcodeFromWebAddress(webAddress)
   }
 
   def startWithDirectWebAddress = {
     logger.info("Starting using direct web address")
-    val webAddress = config.directWebAddress
-    processWebAddress(webAddress)
+    val webAddress = config.postcodeCheckerConfig.directWebAddress
+    getPostcodeFromWebAddress(webAddress)
   }
 
-  private def processWebAddress(webAddress: String) = {
+  private def getPostcodeFromWebAddress(webAddress: String) = {
       logger.info(s"Processing web address: $webAddress")
 
       val imageURL = getImageURLFromWebAddress(webAddress)
       logger.info(s"Using image address: $imageURL")
-
-//      val source = Source.fromURL(imageURL).reader()
-//      val byteArray = Stream.continually(source.read).takeWhile(_ != -1).map(_.toByte).toArray
 
       val imageByteArray = getByteArrayFromImage(imageURL)
 
@@ -47,7 +39,7 @@ class PostcodeChecker(config: Config) extends StrictLogging {
       postCodeFromVisionApi match {
         case None => logger.error("No postcode returned from vision API")
         case Some(result) =>
-          if (config.postcodesToMatch contains result) handleSuccessfulMatch(result)
+          if (config.postcodeCheckerConfig.postcodesToMatch contains result) handleSuccessfulMatch(result)
           else handleUnsuccessfulMatch(result)
       }
     }
@@ -90,15 +82,10 @@ class PostcodeChecker(config: Config) extends StrictLogging {
 
   private def getImageURLFromWebAddress(url: String): String = {
 
-    def getLines(url: String): List[String] = {
-      val lines = Source.fromURL(url).getLines().toList
-      lines.find(_.contains("The document has moved")) match {
-        case None => lines
-        case Some(line) => getLines(line.split("\"")(1))
-      }
-    }
+    val response = Http(url).options(HttpOptions.followRedirects(true)).asString
+    val responseLines = response.body.split("\n")
 
-    val imageUrlSuffix = getLines(url).find(_.contains("The current winning postcode")) match {
+    val imageUrlSuffix = responseLines.find(_.contains("The current winning postcode")) match {
       case None => throw new RuntimeException("Text 'The current winning postcode' not found in webpage retrieved")
       case Some(line) => line.split("src=\"")(1).split("\"/>")(0)
     }
@@ -107,10 +94,6 @@ class PostcodeChecker(config: Config) extends StrictLogging {
     "https://freepostcodelottery.com" + imageUrlSuffix
   }
 
-//  private def writeImageToDisk(imageURL: String, outputFileName: String): Unit = {
-//    logger.info(s"Attempting to write image file $outputFileName to disk")
-//    new URL(imageURL) #> new File(outputFileName) !!
-//  }
 
   private def getByteArrayFromImage(imageUrl: String): Array[Byte] = {
 

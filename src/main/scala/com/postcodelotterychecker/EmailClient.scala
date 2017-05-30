@@ -1,15 +1,14 @@
 package com.postcodelotterychecker
 
 import java.util.Properties
-import javax.mail.Session
+import javax.mail.{Session, _}
 import javax.mail.internet.{InternetAddress, MimeMessage}
-import javax.mail._
-import javax.mail.internet._
 
 import com.ditcherj.contextio.ContextIO
-import com.ditcherj.contextio.dto.{Message, Type}
+import com.ditcherj.contextio.dto.Type
 import com.typesafe.scalalogging.StrictLogging
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 case class Email(subject: String, body: String, from: String, to: String)
@@ -20,11 +19,27 @@ class EmailClient(contextIoConfig: ContextIoConfig, emailerConfig: EmailerConfig
   val accountId = contextIoConfig.accountId
 
 
-  def getMostRecentMessageBody: String = {
+  def getMostRecentMessageBody(subjectStr: String): String = {
     val messagesDescending = contextIO.getMessages(accountId).getMessages.asScala.toList.sortBy(msg => msg.getDate_received).reverse
-    val postcodeMessages = messagesDescending.filter(msg => msg.getSubject.contains("Draw Alert"))
-    val mostRecentMessageId = postcodeMessages.headOption.getOrElse(throw new RuntimeException("Cannot get most recent message")).getMessage_id
-    contextIO.getMessageBody(accountId, mostRecentMessageId, Type.TXT).toString
+    val matchingMessages = messagesDescending.filter(msg => msg.getSubject.contains(subjectStr))
+    logger.info(s"Messages containing subject string $subjectStr are: ${matchingMessages.map(_.getSubject)}")
+    val mostRecentMessageId = matchingMessages.headOption.getOrElse(throw new RuntimeException(s"Cannot get most recent message with subject $subjectStr")).getMessage_id
+    logger.info(s"Most recent message ID: $mostRecentMessageId")
+
+    @tailrec
+    def getMessageBodyHelper(attempt: Int): String = {
+      contextIO.getConnectTokens(accountId).getTokens
+      val response = contextIO.getMessageBody(accountId, mostRecentMessageId, Type.TXT)
+      if (response.getCode == 200) response.toString
+      else if (attempt <= contextIoConfig.readRetries) {
+        logger.info(s"Response code ${response.getCode} received. Waiting before trying again. Attempt $attempt of ${contextIoConfig.readRetries}")
+        Thread.sleep(contextIoConfig.timeBetweenRetries)
+        getMessageBodyHelper(attempt + 1)
+      } else {
+        throw new RuntimeException(s"Unable to get email after $attempt attempts. Response code: ${response.getCode}")
+      }
+    }
+    getMessageBodyHelper(1)
   }
 
   def sendEmail(email: Email): Unit = {

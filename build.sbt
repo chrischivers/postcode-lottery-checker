@@ -13,6 +13,8 @@ libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.3"
 libraryDependencies += "org.apache.httpcomponents" % "httpmime" % "4.5.3"
 libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.5"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.8.1"
+libraryDependencies +=  "org.scalaj" %% "scalaj-http" % "2.3.0"
+libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "2.0.0-RC2"
 
 val circeVersion = "0.8.0"
 libraryDependencies ++= Seq(
