@@ -11,6 +11,5 @@ object Main extends App with StrictLogging {
     val dinnerChecker = new DinnerChecker(ConfigLoader.defaultConfig)
     dinnerChecker.startWithDirectWebAddress
   }
-
   start
 }

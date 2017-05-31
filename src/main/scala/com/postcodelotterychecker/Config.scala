@@ -5,11 +5,13 @@ import scala.collection.JavaConverters._
 
 case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, contextIOConfig: ContextIoConfig)
 case class VisionApiConfig(apiKey: String)
-case class PostcodeCheckerConfig(postcodesToMatch: List[String], directWebAddress: String)
-case class DinnerCheckerConfig(usernamesToMatch: List[String], directWebAddress: String)
-case class EmailerConfig(fromAddress: String, toAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
+case class PostcodeCheckerConfig(users: List[PostcodeUser], directWebAddress: String)
+case class DinnerCheckerConfig(users: List[DinnerUser], directWebAddress: String)
+case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
 case class ContextIoConfig(clientKey: String, secret: String, accountId: String, readRetries: Int, timeBetweenRetries: Long)
 
+case class PostcodeUser(postcode: String, email: String)
+case class DinnerUser(username: String, email: String)
 
 object ConfigLoader {
 
@@ -18,11 +20,13 @@ object ConfigLoader {
   val defaultConfig: Config = {
     Config(
       PostcodeCheckerConfig(
-        defaultConfigFactory.getStringList("postcodeChecker.postcodesToMatch").asScala.toList,
+        defaultConfigFactory.getStringList("postcodeChecker.postcodesToMatch").asScala.toList
+          .map(str => PostcodeUser(str.split(",")(0), str.split(",")(1))),
         defaultConfigFactory.getString("postcodeChecker.directWebAddress")
       ),
       DinnerCheckerConfig(
-        defaultConfigFactory.getStringList("dinnerChecker.usernamesToMatch").asScala.toList,
+        defaultConfigFactory.getStringList("dinnerChecker.usernamesToMatch").asScala.toList
+          .map(str => DinnerUser(str.split(",")(0), str.split(",")(1))),
         defaultConfigFactory.getString("dinnerChecker.directWebAddress")
       ),
       VisionApiConfig(
@@ -30,7 +34,6 @@ object ConfigLoader {
       ),
       EmailerConfig(
         defaultConfigFactory.getString("email.fromAddress"),
-        defaultConfigFactory.getString("email.toAddress"),
         defaultConfigFactory.getString("email.smtpHost"),
         defaultConfigFactory.getInt("email.smtpPort"),
         defaultConfigFactory.getString("email.smtpUsername"),

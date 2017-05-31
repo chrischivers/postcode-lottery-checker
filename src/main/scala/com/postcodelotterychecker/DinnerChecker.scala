@@ -18,54 +18,59 @@ class DinnerChecker(config: Config) extends StrictLogging {
     val messageBody = emailClient.getMostRecentMessageBody("Dinner is served")
     val webAddress = getWebAddressFromMessage(messageBody)
     println(s"Web address $webAddress found in email")
-    getWinnersFromWebAddress(webAddress)
+    val winnerList = getListOfWinnersFromWebAddress(webAddress)
+    processResult(winnerList)
   }
 
   def startWithDirectWebAddress = {
     logger.info("Dinner Checker: Starting using direct web address")
     val webAddress = config.dinnerCheckerConfig.directWebAddress
-    getWinnersFromWebAddress(webAddress)
+    val winnerList = getListOfWinnersFromWebAddress(webAddress)
+    processResult(winnerList)
   }
 
-  private def getWinnersFromWebAddress(webAddress: String) = {
+  private def getListOfWinnersFromWebAddress(webAddress: String) = {
     logger.info(s"Dinner Checker: Processing web address: $webAddress")
 
     val browser = JsoupBrowser()
     val doc = browser.get(webAddress)
-    val listOfWinners = (doc >> texts(".name")).toSet.toList
+    (doc >> texts(".name")).toSet.toList
+  }
+
+  private def processResult(listOfWinners: List[String]) = {
 
     logger.info(s"Winners obtained from webpage: $listOfWinners")
     if (listOfWinners.isEmpty) throw new RuntimeException("No winners returned from website")
     else {
-    val matchingUsernames: List[String] = listOfWinners.foldLeft(List[String]())((acc, winner) => {
-          if (config.dinnerCheckerConfig.usernamesToMatch.contains(winner)) acc :+ winner
-          else acc
-        })
-    if (matchingUsernames.nonEmpty) handleSuccessfulMatch(matchingUsernames)
-    else handleUnsuccessfulMatch(listOfWinners)
+      val winnerLosingUsers = config.dinnerCheckerConfig.users
+        .partition(user => listOfWinners.contains(user.username))
+      handleWinningUsers(winnerLosingUsers._1)
+      handleLosingUsers(winnerLosingUsers._2, listOfWinners)
     }
-  }
 
-  private def handleSuccessfulMatch(matchingUsernames: List[String]): Unit = {
-    logger.info("Successful match!")
-    val email = Email(
-      s"Dinner Lottery Checker ($todaysDate): WINNING USERNAME(S)!",
-      s"Username(s) ${matchingUsernames.mkString(", ")} has won!",
-      config.emailerConfig.fromAddress,
-      config.emailerConfig.toAddress
-    )
-    emailClient.sendEmail(email)
-  }
+    def handleWinningUsers(winners: List[DinnerUser]): Unit = {
+      winners.foreach(winner => {
+        val email = Email(
+          s"Dinner Lottery Checker ($todaysDate): WINNING USERNAME!",
+          s"Username ${winner.username} has won!",
+          config.emailerConfig.fromAddress,
+          winner.email
+        )
+        emailClient.sendEmail(email)
+      })
+    }
 
-  private def handleUnsuccessfulMatch(winners: List[String]) = {
-    logger.info("Unsuccessful match!")
-    val email = Email(
-      s"Dinner Lottery Checker ($todaysDate): You have not won",
-      s"Today's winning usernames were ${winners.mkString(", ")}. You have not won.",
-      config.emailerConfig.fromAddress,
-      config.emailerConfig.toAddress
-    )
-    emailClient.sendEmail(email)
+    def handleLosingUsers(losers: List[DinnerUser], actualWinners: List[String]) = {
+      losers.foreach(loser => {
+        val email = Email(
+          s"Dinner Lottery Checker ($todaysDate): You have not won",
+          s"Today's winning usernames were ${actualWinners.mkString(", ")}. You have not won.",
+          config.emailerConfig.fromAddress,
+          loser.email
+        )
+        emailClient.sendEmail(email)
+      })
+    }
   }
 
   private def getWebAddressFromMessage(messageBody: String): String = {

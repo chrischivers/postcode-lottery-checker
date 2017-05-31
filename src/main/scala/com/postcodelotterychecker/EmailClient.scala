@@ -65,7 +65,6 @@ class EmailClient(contextIoConfig: ContextIoConfig, emailerConfig: EmailerConfig
     try {
       logger.info(s"Sending email to ${email.to}")
       Transport.send(message)
-      Thread.sleep(5000)
     } catch {
       case e: Exception => logger.error(s"Error sending email to ${email.to}", e)
     }

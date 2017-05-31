@@ -17,16 +17,18 @@ class PostcodeChecker(config: Config) extends StrictLogging {
     val messageBody = emailClient.getMostRecentMessageBody("Draw Alert")
     val webAddress = getWebAddressFromMessage(messageBody)
     logger.info(s"Web address $webAddress found in email")
-    getPostcodeFromWebAddress(webAddress)
+    val winningPostcode = getPostcodeFromWebAddress(webAddress)
+    processResult(winningPostcode)
   }
 
   def startWithDirectWebAddress = {
     logger.info("Starting using direct web address")
     val webAddress = config.postcodeCheckerConfig.directWebAddress
-    getPostcodeFromWebAddress(webAddress)
+    val winningPostcode = getPostcodeFromWebAddress(webAddress)
+    processResult(winningPostcode)
   }
 
-  private def getPostcodeFromWebAddress(webAddress: String) = {
+  private def getPostcodeFromWebAddress(webAddress: String): String = {
       logger.info(s"Processing web address: $webAddress")
 
       val imageURL = getImageURLFromWebAddress(webAddress)
@@ -37,35 +39,41 @@ class PostcodeChecker(config: Config) extends StrictLogging {
       val postCodeFromVisionApi = VisionAPI.makeRequest(imageByteArray)
       logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
       postCodeFromVisionApi match {
-        case None => logger.error("No postcode returned from vision API")
-        case Some(result) =>
-          if (config.postcodeCheckerConfig.postcodesToMatch contains result) handleSuccessfulMatch(result)
-          else handleUnsuccessfulMatch(result)
+        case None => throw new RuntimeException("No postcode returned from vision API")
+        case Some(result) => result
       }
     }
 
+  private def processResult(winningPostcode: String) = {
+    val winnerLosingUsers = config.postcodeCheckerConfig.users
+      .partition(_.postcode == winningPostcode)
+    handleWinningUsers(winnerLosingUsers._1, winningPostcode)
+    handleLosingUsers(winnerLosingUsers._2, winningPostcode)
 
-  private def handleSuccessfulMatch(winningPostcode: String): Unit = {
-    logger.info("Successful match!")
-    val email = Email(
-      s"Postcode Lottery Checker ($todaysDate): WINNING POSTCODE!",
-      s"Postcode $winningPostcode has won!",
-      config.emailerConfig.fromAddress,
-      config.emailerConfig.toAddress
-    )
-    emailClient.sendEmail(email)
-  }
 
-  private def handleUnsuccessfulMatch(nonWinningPostcode: String) = {
+    def handleWinningUsers(winners: List[PostcodeUser], winningPostcode: String) = {
+      winners.foreach(winner => {
+        val email = Email(
+          s"Postcode Lottery Checker ($todaysDate): WINNING POSTCODE!",
+          s"Postcode $winningPostcode has won!",
+          config.emailerConfig.fromAddress,
+          winner.email
+        )
+        emailClient.sendEmail(email)
+      })
+    }
 
-    logger.info("Unsuccessful match!")
-    val email = Email(
-      s"Postcode Lottery Checker ($todaysDate): You have not won",
-      s"Today's winning postcode was $nonWinningPostcode. You have not won.",
-      config.emailerConfig.fromAddress,
-      config.emailerConfig.toAddress
-    )
-    emailClient.sendEmail(email)
+    def handleLosingUsers(losers: List[PostcodeUser], winningPostcode: String) = {
+      losers.foreach(loser => {
+        val email = Email(
+          s"Postcode Lottery Checker ($todaysDate): You have not won",
+          s"Today's winning postcode was $winningPostcode. You have not won.",
+          config.emailerConfig.fromAddress,
+          loser.email
+        )
+        emailClient.sendEmail(email)
+      })
+    }
   }
 
   private def getWebAddressFromMessage(messageBody: String): String = {
