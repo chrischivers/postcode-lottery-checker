@@ -1,17 +1,12 @@
 package com.postcodelotterychecker
 
-import java.nio.file.{Files, Paths}
 import java.util.Base64
 
-import com.typesafe.scalalogging.StrictLogging
-import org.apache.http.client.methods.HttpPost
-import org.apache.http.entity.StringEntity
-import org.apache.http.impl.client.DefaultHttpClient
-import io.circe._
 import cats.syntax.either._
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.parser._
 
-import scala.io.Source
+import scalaj.http.{Http, HttpOptions}
 
 object VisionAPI extends StrictLogging {
 
@@ -48,16 +43,11 @@ object VisionAPI extends StrictLogging {
         |}
         |
     """.stripMargin
-    val client = new DefaultHttpClient
-    val post = new HttpPost(url)
-    post.setHeader("Content-type", "application/json")
-    post.setEntity(new StringEntity(requests))
 
-    val response = client.execute(post)
-    val inputStream = response.getEntity.getContent
-    val content = Source.fromInputStream(inputStream).getLines.mkString
-    inputStream.close()
-    content
+    Http(url)
+      .postData(requests)
+      .header("content-type", "application/json")
+      .options(HttpOptions.followRedirects(true)).asString.body
   }
 
   private def convertImageToBase64(imageByteArray: Array[Byte]): Array[Byte] = {

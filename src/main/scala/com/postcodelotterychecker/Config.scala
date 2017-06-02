@@ -5,8 +5,8 @@ import scala.collection.JavaConverters._
 
 case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, contextIOConfig: ContextIoConfig)
 case class VisionApiConfig(apiKey: String)
-case class PostcodeCheckerConfig(users: List[PostcodeUser], directWebAddress: String)
-case class DinnerCheckerConfig(users: List[DinnerUser], directWebAddress: String)
+case class PostcodeCheckerConfig(users: List[PostcodeUser], directWebAddressPrefix: String, directWebAddressSuffix: String)
+case class DinnerCheckerConfig(users: List[DinnerUser], directWebAddressPrefix: String, directWebAddressSuffix: String)
 case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
 case class ContextIoConfig(clientKey: String, secret: String, accountId: String, readRetries: Int, timeBetweenRetries: Long)
 
@@ -22,12 +22,14 @@ object ConfigLoader {
       PostcodeCheckerConfig(
         defaultConfigFactory.getStringList("postcodeChecker.postcodesToMatch").asScala.toList
           .map(str => PostcodeUser(str.split(",")(0), str.split(",")(1))),
-        defaultConfigFactory.getString("postcodeChecker.directWebAddress")
+        defaultConfigFactory.getString("postcodeChecker.directWebAddressPrefix"),
+        defaultConfigFactory.getString("postcodeChecker.directWebAddressSuffix")
       ),
       DinnerCheckerConfig(
         defaultConfigFactory.getStringList("dinnerChecker.usernamesToMatch").asScala.toList
           .map(str => DinnerUser(str.split(",")(0), str.split(",")(1))),
-        defaultConfigFactory.getString("dinnerChecker.directWebAddress")
+        defaultConfigFactory.getString("dinnerChecker.directWebAddressPrefix"),
+        defaultConfigFactory.getString("dinnerChecker.directWebAddressSuffix")
       ),
       VisionApiConfig(
         defaultConfigFactory.getString("visionApiKey")

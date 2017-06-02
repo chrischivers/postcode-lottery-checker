@@ -24,8 +24,8 @@ class DinnerChecker(config: Config) extends StrictLogging {
 
   def startWithDirectWebAddress = {
     logger.info("Dinner Checker: Starting using direct web address")
-    val webAddress = config.dinnerCheckerConfig.directWebAddress
-    val winnerList = getListOfWinnersFromWebAddress(webAddress)
+    val directWebAddress = config.dinnerCheckerConfig.directWebAddressPrefix + config.dinnerCheckerConfig.directWebAddressPrefix
+    val winnerList = getListOfWinnersFromWebAddress(directWebAddress)
     processResult(winnerList)
   }
 
