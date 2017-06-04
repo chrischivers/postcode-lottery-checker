@@ -69,32 +69,6 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
     }
   }
 
-//  test("Email is sent on successful match") { f =>
-//    val postcodeChecker = new PostcodeChecker(f.testConfig, f.users)
-//
-//    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
-//
-//    postcodeChecker.run
-//    f.testEmailClient.emailsSent.head.subject should include("WINNING POSTCODE")
-//    f.testEmailClient.emailsSent.head.body should include(s"Postcode $winningPostcodeFromImage has won!")
-//    f.testEmailClient.emailsSent.head.to should include ("test@test.com")
-//  }
-////
-//  test("Email is sent on unsucessful match") { f =>
-//    val usersPlaying = List(PostcodeUser("F89DJF", "test@test.com"))
-//    val updatedConfig = f.testConfig.copy(postcodeCheckerConfig = f.testConfig.postcodeCheckerConfig.copy(users = usersPlaying))
-//    val postcodeChecker = new PostcodeChecker(updatedConfig, f.testEmailClient)
-//
-//    webpageIsRetrieved(f.restitoServer.server, "postcode-test-webpage.html")
-//    imageIsRetrieved(f.restitoServer.server, "test-postcode-image.php")
-//
-//    postcodeChecker.startWithDirectWebAddress
-//    f.testEmailClient.emailsSent.head.subject should include("You have not won")
-//    f.testEmailClient.emailsSent.head.body should include("You have not won")
-//    f.testEmailClient.emailsSent.head.body should include(s"winning postcode was $winningPostcodeFromImage")
-//    f.testEmailClient.emailsSent.head.to should include ("test@test.com")
-//  }
-
   def webpageIsRetrieved(server: StubServer, resourceName: String) = {
     whenHttp(server).`match`(
       get("/"),

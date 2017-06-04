@@ -1,15 +1,10 @@
 package com.postcodelotterychecker
 
 import java.util.Properties
-import javax.mail.{Session, _}
 import javax.mail.internet.{InternetAddress, MimeMessage}
+import javax.mail.{Session, _}
 
-import com.ditcherj.contextio.ContextIO
-import com.ditcherj.contextio.dto.Type
 import com.typesafe.scalalogging.StrictLogging
-
-import scala.annotation.tailrec
-import scala.collection.JavaConverters._
 
 case class Email(subject: String, body: String, to: String)
 

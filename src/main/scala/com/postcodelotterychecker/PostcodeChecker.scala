@@ -10,16 +10,16 @@ import scalaj.http.{Http, HttpOptions}
 
 class PostcodeChecker(config: Config, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
-  override def run: Future[Map[User, Option[Boolean]]] = startWithDirectWebAddress
+  override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
-  private def startWithDirectWebAddress: Future[Map[User, Option[Boolean]]] = {
+  private def startWithDirectWebAddress: Future[(UserResults, Postcode)] = {
     Future {
       logger.info("Starting using direct web address")
       val directWebAddress = config.postcodeCheckerConfig.directWebAddressPrefix + config.postcodeCheckerConfig.directWebAddressSuffix
       logger.info(s"using direct web address $directWebAddress")
       val winningPostcode = getWinningResult(directWebAddress)
       logger.info(s"winning postcode obtained: $winningPostcode")
-      processResult(winningPostcode)
+      (processResult(winningPostcode), winningPostcode)
     }
   }
 

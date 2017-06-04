@@ -11,9 +11,11 @@ case class User(email: String, postCodesWatching: Option[List[Postcode]], dinner
 
 trait Checker[A] {
 
+  type UserResults = Map[User, Option[Boolean]]
+
   val todaysDate: String = new SimpleDateFormat("dd/MM/yyyy").format(new Date())
 
-  def run: Future[Map[User, Option[Boolean]]]
+  def run: Future[(UserResults, A)]
 
   def getWinningResult(webAddress: String): A
 

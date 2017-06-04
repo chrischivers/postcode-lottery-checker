@@ -9,14 +9,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class DinnerChecker(config: Config, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[List[DinnerUserName]] with StrictLogging {
 
-  override def run: Future[Map[User, Option[Boolean]]] = startWithDirectWebAddress
+  override def run: Future[(UserResults, List[DinnerUserName])] = startWithDirectWebAddress
 
   private def startWithDirectWebAddress = {
     Future {
       logger.info("Dinner Checker: Starting using direct web address")
       val directWebAddress = config.dinnerCheckerConfig.directWebAddressPrefix + config.dinnerCheckerConfig.directWebAddressSuffix
       val winnerList = getWinningResult(directWebAddress)
-      processResult(winnerList)
+      (processResult(winnerList), winnerList)
     }
   }
 

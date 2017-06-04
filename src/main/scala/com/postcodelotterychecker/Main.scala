@@ -1,7 +1,10 @@
 package com.postcodelotterychecker
 
 import com.typesafe.scalalogging.StrictLogging
+
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 object Main extends App with StrictLogging {
 
@@ -15,11 +18,13 @@ object Main extends App with StrictLogging {
 
     val notificationDispatcher = new NotificationDispatcher(emailClient)
 
-    for {
+    val runner = for {
       postCodeResults <- postcodeChecker.run
       dinnerResults <- dinnerChecker.run
-      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults, dinnerResults)
+      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2)
     } yield ()
+
+    Await.result(runner, 1 minute)
   }
   start
 }

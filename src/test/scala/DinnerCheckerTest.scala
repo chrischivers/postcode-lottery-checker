@@ -14,12 +14,12 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
   case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config)
 
   val winnerUsersFromWebpage = List(
-    DinnerUserName("Katyali"),
-    DinnerUserName("HethShouse"),
-    DinnerUserName("Alex Redmond"),
-    DinnerUserName("LaurenCharlotte"),
-    DinnerUserName("Littleimpney"),
-    DinnerUserName("PastyRoastBeef78"))
+    DinnerUserName("Winner1"),
+    DinnerUserName("Winner2"),
+    DinnerUserName("Winner3"),
+    DinnerUserName("Winner4"),
+    DinnerUserName("Winner5"),
+    DinnerUserName("Winner6"))
 
   def withFixture(test: OneArgTest) = {
 
@@ -51,7 +51,7 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
     webpageIsRetrieved(f.restitoServer.server, "dinner/dinner-test-webpage.html")
 
     val usersObtained = f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
-    usersObtained should equal(winnerUsersFromWebpage)
+    usersObtained should contain theSameElementsAs winnerUsersFromWebpage
   }
 
   test("Unknown webpage response should throw an exception") { f =>
@@ -62,35 +62,6 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
       f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
     }
   }
-
-//  test("Email is sent on successful match") { f =>
-//    val usersPlaying = List(User("test@test.com", Some(List(winningPostcodeFromImage)), None))
-//    val postcodeChecker = new PostcodeChecker(f.testConfig, f.testEmailClient, usersPlaying)
-//
-//    webpageIsRetrieved(f.restitoServer.server, "postcode-test-webpage.html")
-//    imageIsRetrieved(f.restitoServer.server, "test-postcode-image.php")
-//
-//    postcodeChecker.run
-//    f.testEmailClient.emailsSent.head.subject should include("WINNING POSTCODE")
-//    f.testEmailClient.emailsSent.head.body should include(s"Postcode $winningPostcodeFromImage has won!")
-//    f.testEmailClient.emailsSent.head.to should include ("test@test.com")
-//  }
-////
-//  test("Email is sent on unsucessful match") { f =>
-//    val usersPlaying = List(PostcodeUser("F89DJF", "test@test.com"))
-//    val updatedConfig = f.testConfig.copy(postcodeCheckerConfig = f.testConfig.postcodeCheckerConfig.copy(users = usersPlaying))
-//    val postcodeChecker = new PostcodeChecker(updatedConfig, f.testEmailClient)
-//
-//    webpageIsRetrieved(f.restitoServer.server, "postcode-test-webpage.html")
-//    imageIsRetrieved(f.restitoServer.server, "test-postcode-image.php")
-//
-//    postcodeChecker.startWithDirectWebAddress
-//    f.testEmailClient.emailsSent.head.subject should include("You have not won")
-//    f.testEmailClient.emailsSent.head.body should include("You have not won")
-//    f.testEmailClient.emailsSent.head.body should include(s"winning postcode was $winningPostcodeFromImage")
-//    f.testEmailClient.emailsSent.head.to should include ("test@test.com")
-//  }
-
   def webpageIsRetrieved(server: StubServer, resourceName: String) = {
     whenHttp(server).`match`(
       get("/click.php/e970742/h39771/s121a5583e9/"),

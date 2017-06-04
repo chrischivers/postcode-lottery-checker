@@ -16,6 +16,14 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
 
   val winningPostcodeFromImage = Postcode("PR67LJ")
 
+  val winnerUsersFromWebpage = List(
+    DinnerUserName("Winner1"),
+    DinnerUserName("Winner2"),
+    DinnerUserName("Winner3"),
+    DinnerUserName("Winner4"),
+    DinnerUserName("Winner5"),
+    DinnerUserName("Winner6"))
+
   def withFixture(test: OneArgTest) = {
 
     val port = 7000 + Random.nextInt(1000)
@@ -55,7 +63,7 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     (for {
       postCodeResults <- f.postcodeChecker.run
       dinnerResults <- f.dinnerChecker.run
-      _ <- f.notificationDispatcher.dispatchNotifications(f.users, postCodeResults, dinnerResults)
+      _ <- f.notificationDispatcher.dispatchNotifications(f.users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2)
     } yield ()).futureValue
 
     f.testEmailClient.emailsSent should have size 6
@@ -65,6 +73,11 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
 
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include ("Postcode Lottery: Not won")
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include ("Win A Dinner: Not won")
+    f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include (winningPostcodeFromImage.value)
+    winnerUsersFromWebpage.foreach(winningUser => {
+      f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include (winningUser.value)
+    })
+
 
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Postcode Lottery: WON")
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Win A Dinner: Not won")
