@@ -1,38 +1,29 @@
 package com.postcodelotterychecker
 
-import java.io.{ByteArrayOutputStream, File}
+import java.io.ByteArrayOutputStream
 import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.Date
 
 import com.typesafe.scalalogging.StrictLogging
 
+import scala.concurrent.{ExecutionContext, Future}
 import scalaj.http.{Http, HttpOptions}
 
-class PostcodeChecker(config: Config) extends StrictLogging {
+class PostcodeChecker(config: Config, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
-  val todaysDate = new SimpleDateFormat("dd/MM/yyyy").format(new Date())
-  val emailClient = new EmailClient(config.contextIOConfig, config.emailerConfig)
+  override def run: Future[Map[User, Option[Boolean]]] = startWithDirectWebAddress
 
-  def startWithEmailChecker = {
-    logger.info("Starting using email checker")
-    val messageBody = emailClient.getMostRecentMessageBody("Draw Alert")
-    val webAddress = getWebAddressFromMessage(messageBody)
-    logger.info(s"Web address $webAddress found in email")
-    val winningPostcode = getPostcodeFromWebAddress(webAddress)
-    processResult(winningPostcode)
+  private def startWithDirectWebAddress: Future[Map[User, Option[Boolean]]] = {
+    Future {
+      logger.info("Starting using direct web address")
+      val directWebAddress = config.postcodeCheckerConfig.directWebAddressPrefix + config.postcodeCheckerConfig.directWebAddressSuffix
+      logger.info(s"using direct web address $directWebAddress")
+      val winningPostcode = getWinningResult(directWebAddress)
+      logger.info(s"winning postcode obtained: $winningPostcode")
+      processResult(winningPostcode)
+    }
   }
 
-  def startWithDirectWebAddress = {
-    logger.info("Starting using direct web address")
-    val directWebAddress = config.postcodeCheckerConfig.directWebAddressPrefix + config.postcodeCheckerConfig.directWebAddressSuffix
-    logger.info(s"using direct web address $directWebAddress")
-    val winningPostcode = getPostcodeFromWebAddress(directWebAddress)
-    logger.info(s"winning postcode obtained: $winningPostcode")
-    processResult(winningPostcode)
-  }
-
-  def getPostcodeFromWebAddress(webAddress: String): String = {
+  override def getWinningResult(webAddress: String): Postcode = {
       logger.info(s"Processing web address: $webAddress")
 
       val imageURL = getImageURLFromWebAddress(webAddress)
@@ -44,57 +35,23 @@ class PostcodeChecker(config: Config) extends StrictLogging {
       logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
       postCodeFromVisionApi match {
         case None => throw new RuntimeException("No postcode returned from vision API")
-        case Some(result) => result
+        case Some(result) => Postcode(result)
       }
     }
 
-  private def processResult(winningPostcode: String) = {
-    val winnerLosingUsers = config.postcodeCheckerConfig.users
-      .partition(_.postcode == winningPostcode)
-    handleWinningUsers(winnerLosingUsers._1, winningPostcode)
-    handleLosingUsers(winnerLosingUsers._2, winningPostcode)
-
-
-    def handleWinningUsers(winners: List[PostcodeUser], winningPostcode: String) = {
-      winners.foreach(winner => {
-        val email = Email(
-          s"Postcode Lottery Checker ($todaysDate): WINNING POSTCODE!",
-          s"Postcode $winningPostcode has won!",
-          config.emailerConfig.fromAddress,
-          winner.email
-        )
-        emailClient.sendEmail(email)
+  private def processResult(winningPostcode: Postcode): Map[User, Option[Boolean]] = {
+    users.map(user => {
+      user -> user.postCodesWatching.map(watching => {
+        watching.contains(winningPostcode)
       })
-    }
-
-    def handleLosingUsers(losers: List[PostcodeUser], winningPostcode: String) = {
-      losers.foreach(loser => {
-        val email = Email(
-          s"Postcode Lottery Checker ($todaysDate): You have not won",
-          s"Today's winning postcode was $winningPostcode. You have not won.",
-          config.emailerConfig.fromAddress,
-          loser.email
-        )
-        emailClient.sendEmail(email)
-      })
-    }
-  }
-
-  private def getWebAddressFromMessage(messageBody: String): String = {
-
-    val msgLines = messageBody.split("\n")
-    val webAddressLine = msgLines.indexWhere(_.startsWith("See if you're a winner")) match {
-      case -1 => throw new RuntimeException("Line 'See if you're a winner' not found in email")
-      case n => n + 1
-    }
-    msgLines(webAddressLine).replaceAll("[<> ]", "")
+    }).toMap
   }
 
   private def getImageURLFromWebAddress(url: String): String = {
 
     val response = Http(url).options(HttpOptions.followRedirects(true)).asString
     val responseLines = response.body.split("\n")
-    
+
     val imageUrlSuffix = responseLines.find(_.contains("The current winning postcode")) match {
       case None => throw new RuntimeException("Text 'The current winning postcode' not found in webpage retrieved")
       case Some(line) => line.split("src=\"")(1).split("\"/>")(0)

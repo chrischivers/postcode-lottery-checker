@@ -9,11 +9,17 @@ import org.scalatest.{Matchers, fixture}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
-class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
+class DinnerCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
+  case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config)
 
-  val winningPostcodeFromImage = Postcode("PR67LJ")
+  val winnerUsersFromWebpage = List(
+    DinnerUserName("Katyali"),
+    DinnerUserName("HethShouse"),
+    DinnerUserName("Alex Redmond"),
+    DinnerUserName("LaurenCharlotte"),
+    DinnerUserName("Littleimpney"),
+    DinnerUserName("PastyRoastBeef78"))
 
   def withFixture(test: OneArgTest) = {
 
@@ -24,14 +30,13 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      postcodeCheckerConfig = defaultConfig.postcodeCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
-    )
+      dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
+      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile")))
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val postcodeChecker = new PostcodeChecker(testConfig, users)
-    val notificationDispatcher = new NotificationDispatcher(testEmailClient)
-    val testFixture = FixtureParam(postcodeChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
+
+    val dinnerChecker = new DinnerChecker(testConfig, users)
+    val testFixture = FixtureParam(dinnerChecker, restitoServer, testEmailClient, testConfig)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -41,38 +46,29 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
     }
   }
 
-  test("Readable postcode should be identified from Postcode Checker web address") { f =>
+  test("list of winning users should be identified from webpage") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
-    imageIsRetrieved(f.restitoServer.server, "postcode/test-postcode-image.php")
+    webpageIsRetrieved(f.restitoServer.server, "dinner/dinner-test-webpage.html")
 
-    val postcodeObtained = f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
-    postcodeObtained should equal(winningPostcodeFromImage)
-  }
-
-  test("Unreadable postcode should throw an exception") { f =>
-
-    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
-    imageIsRetrieved(f.restitoServer.server, "postcode/non-readable-postcode-image.php")
-
-    assertThrows[RuntimeException] {
-      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
-    }
+    val usersObtained = f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
+    usersObtained should equal(winnerUsersFromWebpage)
   }
 
   test("Unknown webpage response should throw an exception") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "postcode/invalid-postcode-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, "dinner/invalid-dinner-test-webpage.html")
 
     assertThrows[RuntimeException] {
-      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
+      f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
     }
   }
 
 //  test("Email is sent on successful match") { f =>
-//    val postcodeChecker = new PostcodeChecker(f.testConfig, f.users)
+//    val usersPlaying = List(User("test@test.com", Some(List(winningPostcodeFromImage)), None))
+//    val postcodeChecker = new PostcodeChecker(f.testConfig, f.testEmailClient, usersPlaying)
 //
-//    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
+//    webpageIsRetrieved(f.restitoServer.server, "postcode-test-webpage.html")
+//    imageIsRetrieved(f.restitoServer.server, "test-postcode-image.php")
 //
 //    postcodeChecker.run
 //    f.testEmailClient.emailsSent.head.subject should include("WINNING POSTCODE")
@@ -97,16 +93,8 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
   def webpageIsRetrieved(server: StubServer, resourceName: String) = {
     whenHttp(server).`match`(
-      get("/"),
-      parameter("reminder", "***REMOVED***"))
-      .`then`(ok, resourceContent(resourceName))
-  }
-
-  def imageIsRetrieved(server: StubServer, resourceName: String) = {
-    whenHttp(server).`match`(
-      get("/speech/2.php"),
-      parameter("s", "4"),
-      parameter("amp;v", "1496434635"))
+      get("/click.php/e970742/h39771/s121a5583e9/"),
+      parameter("uuid", "***REMOVED***"))
       .`then`(ok, resourceContent(resourceName))
   }
 }

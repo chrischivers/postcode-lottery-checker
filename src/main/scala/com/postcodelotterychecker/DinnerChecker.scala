@@ -1,87 +1,43 @@
 package com.postcodelotterychecker
 
-import java.text.SimpleDateFormat
-import java.util.Date
-
 import com.typesafe.scalalogging.StrictLogging
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import net.ruippeixotog.scalascraper.dsl.DSL._
 
-class DinnerChecker(config: Config) extends StrictLogging {
+import scala.concurrent.{ExecutionContext, Future}
 
-  val todaysDate = new SimpleDateFormat("dd/MM/yyyy").format(new Date())
-  val emailClient = new EmailClient(config.contextIOConfig, config.emailerConfig)
+class DinnerChecker(config: Config, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[List[DinnerUserName]] with StrictLogging {
 
-  def startWithEmailChecker = {
-    logger.info("Dinner Checker: Starting using email checker")
-    val messageBody = emailClient.getMostRecentMessageBody("Dinner is served")
-    val webAddress = getWebAddressFromMessage(messageBody)
-    println(s"Web address $webAddress found in email")
-    val winnerList = getListOfWinnersFromWebAddress(webAddress)
-    processResult(winnerList)
+  override def run: Future[Map[User, Option[Boolean]]] = startWithDirectWebAddress
+
+  private def startWithDirectWebAddress = {
+    Future {
+      logger.info("Dinner Checker: Starting using direct web address")
+      val directWebAddress = config.dinnerCheckerConfig.directWebAddressPrefix + config.dinnerCheckerConfig.directWebAddressSuffix
+      val winnerList = getWinningResult(directWebAddress)
+      processResult(winnerList)
+    }
   }
 
-  def startWithDirectWebAddress = {
-    logger.info("Dinner Checker: Starting using direct web address")
-    val directWebAddress = config.dinnerCheckerConfig.directWebAddressPrefix + config.dinnerCheckerConfig.directWebAddressPrefix
-    val winnerList = getListOfWinnersFromWebAddress(directWebAddress)
-    processResult(winnerList)
-  }
-
-  private def getListOfWinnersFromWebAddress(webAddress: String) = {
+  override def getWinningResult(webAddress: String): List[DinnerUserName] = {
     logger.info(s"Dinner Checker: Processing web address: $webAddress")
 
     val browser = JsoupBrowser()
     val doc = browser.get(webAddress)
-    (doc >> texts(".name")).toSet.toList
+    val list = (doc >> texts(".name")).toSet.toList
+    logger.info("Winning User names: " + list)
+    if (list.isEmpty) throw new RuntimeException("No dinner winners found on webpage")
+    list.map(DinnerUserName)
   }
 
-  private def processResult(listOfWinners: List[String]) = {
+  private def processResult(listOfWinningNames: List[DinnerUserName]): Map[User, Option[Boolean]] = {
 
-    logger.info(s"Winners obtained from webpage: $listOfWinners")
-    if (listOfWinners.isEmpty) throw new RuntimeException("No winners returned from website")
-    else {
-      val winnerLosingUsers = config.dinnerCheckerConfig.users
-        .partition(user => listOfWinners.contains(user.username))
-      handleWinningUsers(winnerLosingUsers._1)
-      handleLosingUsers(winnerLosingUsers._2, listOfWinners)
-    }
-
-    def handleWinningUsers(winners: List[DinnerUser]): Unit = {
-      winners.foreach(winner => {
-        val email = Email(
-          s"Dinner Lottery Checker ($todaysDate): WINNING USERNAME!",
-          s"Username ${winner.username} has won!",
-          config.emailerConfig.fromAddress,
-          winner.email
-        )
-        emailClient.sendEmail(email)
+    logger.info(s"Winners obtained from webpage: $listOfWinningNames")
+    users.map(user => {
+      user -> user.dinnerUsersWatching.map(watching => {
+        watching.intersect(listOfWinningNames).nonEmpty
       })
-    }
-
-    def handleLosingUsers(losers: List[DinnerUser], actualWinners: List[String]) = {
-      losers.foreach(loser => {
-        val email = Email(
-          s"Dinner Lottery Checker ($todaysDate): You have not won",
-          s"Today's winning usernames were ${actualWinners.mkString(", ")}. You have not won.",
-          config.emailerConfig.fromAddress,
-          loser.email
-        )
-        emailClient.sendEmail(email)
-      })
-    }
-  }
-
-  private def getWebAddressFromMessage(messageBody: String): String = {
-    println(s"Message body: $messageBody")
-
-    val msgLines = messageBody.split("\n")
-    msgLines.foreach(println)
-    val webAddressLine = msgLines.indexWhere(_.startsWith("See if dinner's on us")) match {
-      case -1 => throw new RuntimeException("Line 'See if dinner's on us' not found in email")
-      case n => n + 1
-    }
-    msgLines(webAddressLine).replaceAll("[<> ]", "")
+    }).toMap
   }
 }

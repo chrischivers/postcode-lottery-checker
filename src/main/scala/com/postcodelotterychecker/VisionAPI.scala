@@ -13,7 +13,6 @@ object VisionAPI extends StrictLogging {
   def makeRequest(imageByteArray: Array[Byte]) = {
     val imageBase64 = convertImageToBase64(imageByteArray)
     val apiResponse = getApiResponse(imageBase64)
-    logger.info(s"Vision Api response: $apiResponse")
     parse(apiResponse).toOption.flatMap(json => {
       val postcodeOpt = json.hcursor.downField("responses").downArray
         .downField("textAnnotations").downArray

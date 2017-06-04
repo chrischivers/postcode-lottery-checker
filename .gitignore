@@ -75,3 +75,5 @@ jrebel.lic
 application.conf
 logback.xml
 client_secret.json
+users.json
+users-test.json
