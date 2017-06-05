@@ -11,7 +11,7 @@ import scala.util.Random
 
 class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
+  case class FixtureParam(postcodeChecker: PostcodeChecker, restitoServer: RestitoServer, testConfig: Config, users: List[User])
 
   val winningPostcodeFromImage = Postcode("PR67LJ")
 
@@ -27,11 +27,9 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
       postcodeCheckerConfig = defaultConfig.postcodeCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
       s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
     )
-    val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val postcodeChecker = new PostcodeChecker(testConfig, users)
-    val notificationDispatcher = new NotificationDispatcher(testEmailClient)
-    val testFixture = FixtureParam(postcodeChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
+    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users)
+    val testFixture = FixtureParam(postcodeChecker, restitoServer, testConfig, users)
 
     try {
       withFixture(test.toNoArgTest(testFixture))

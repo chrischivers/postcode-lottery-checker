@@ -12,7 +12,7 @@ import scala.util.Random
 
 class NotificationDispatcherTest extends fixture.FunSuite with Matchers with ScalaFutures {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
+  case class FixtureParam(postcodeChecker: PostcodeChecker, dinnerChecker: DinnerChecker, stackpotChecker: StackpotChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
 
   val winningPostcodeFromImage = Postcode("PR67LJ")
 
@@ -23,6 +23,8 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     DinnerUserName("Winner4"),
     DinnerUserName("Winner5"),
     DinnerUserName("Winner6"))
+
+  val winningStackpotPostcodes = List(Postcode("NR31TT"), Postcode("YO104DD"), Postcode("SO316LJ"), Postcode("CH35QQ"), Postcode("BT521SS"), Postcode("GY101SB"), Postcode("DN156BA"), Postcode("SL36QA"), Postcode("IG45NF"), Postcode("PL53HW"), Postcode("ST27EB"), Postcode("BS207JP"), Postcode("BT538JY"), Postcode("SG86HL"), Postcode("SE171NJ"), Postcode("PO121GN"), Postcode("OL146QG"), Postcode("PE28TR"), Postcode("SA18RD"), Postcode("WS20DL"), Postcode("GL32AP"))
 
   def withFixture(test: OneArgTest) = {
 
@@ -35,14 +37,16 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     val testConfig = defaultConfig.copy(
       postcodeCheckerConfig = defaultConfig.postcodeCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
       dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
+      stackpotCheckerConfig = defaultConfig.stackpotCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
       s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
     )
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val postcodeChecker = new PostcodeChecker(testConfig, users)
-    val dinnerChecker = new DinnerChecker(testConfig, users)
+    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users)
+    val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
+    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users)
     val notificationDispatcher = new NotificationDispatcher(testEmailClient)
-    val testFixture = FixtureParam(postcodeChecker, dinnerChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
+    val testFixture = FixtureParam(postcodeChecker, dinnerChecker, stackpotChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -59,16 +63,19 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     postCodeWebpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
     postCodeImageIsRetrieved(f.restitoServer.server, "postcode/test-postcode-image.php")
     dinnerWebpageIsRetrieved(f.restitoServer.server, "dinner/dinner-test-webpage.html")
+    stackPotWebpageIsRetrieved(f.restitoServer.server, "stackpot/stackpot-test-webpage.html")
 
     (for {
       postCodeResults <- f.postcodeChecker.run
       dinnerResults <- f.dinnerChecker.run
-      _ <- f.notificationDispatcher.dispatchNotifications(f.users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2)
+      stackpotResults <- f.stackpotChecker.run
+
+      _ <- f.notificationDispatcher.dispatchNotifications(f.users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2)
     } yield ()).futureValue
 
-    f.testEmailClient.emailsSent should have size 6
+    f.testEmailClient.emailsSent should have size 8
     println(f.testEmailClient.emailsSent)
-    f.testEmailClient.emailsSent.filter(_.subject.contains("CONGRATULATIONS YOU HAVE WON")) should have size 3
+    f.testEmailClient.emailsSent.filter(_.subject.contains("CONGRATULATIONS YOU HAVE WON")) should have size 5
     f.testEmailClient.emailsSent.filter(_.subject.contains("Sorry, you have not won today")) should have size 3
 
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include ("Postcode Lottery: Not won")
@@ -77,22 +84,37 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     winnerUsersFromWebpage.foreach(winningUser => {
       f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include (winningUser.value)
     })
-
+    winningStackpotPostcodes.foreach(winningPostcode => {
+      f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include (winningPostcode.value)
+    })
 
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Postcode Lottery: WON")
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Win A Dinner: Not won")
+    f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Stackpot: Not won")
 
     f.testEmailClient.emailsSent.filter(_.to.contains("dinnerwin@test.com")).head.body should include ("Postcode Lottery: Not won")
     f.testEmailClient.emailsSent.filter(_.to.contains("dinnerwin@test.com")).head.body should include ("Win A Dinner: WON")
+    f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Stackpot: Not won")
 
     f.testEmailClient.emailsSent.filter(_.to.contains("bothwin@test.com")).head.body should include ("Postcode Lottery: WON")
     f.testEmailClient.emailsSent.filter(_.to.contains("bothwin@test.com")).head.body should include ("Win A Dinner: WON")
+    f.testEmailClient.emailsSent.filter(_.to.contains("postcodewin@test.com")).head.body should include ("Stackpot: Not won")
 
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodeonlyplay@test.com")).head.body should include ("Postcode Lottery: Not won")
     f.testEmailClient.emailsSent.filter(_.to.contains("postcodeonlyplay@test.com")).head.body should not include "Win A Dinner"
+    f.testEmailClient.emailsSent.filter(_.to.contains("postcodeonlyplay@test.com")).head.body should include ("Stackpot: Not won")
 
     f.testEmailClient.emailsSent.filter(_.to.contains("dinneronlyplay@test.com")).head.body should not include "Postcode Lottery"
     f.testEmailClient.emailsSent.filter(_.to.contains("dinneronlyplay@test.com")).head.body should include ("Win A Dinner: Not won")
+    f.testEmailClient.emailsSent.filter(_.to.contains("dinneronlyplay@test.com")).head.body should not include "Stackpot"
+
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotwin@test.com")).head.body should include ("Stackpot: WON")
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotwin@test.com")).head.body should include ("Win A Dinner: Not won")
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotwin@test.com")).head.body should include ("Postcode Lottery: Not won")
+
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotdinnerwin@test.com")).head.body should include ("Postcode Lottery: Not won")
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotdinnerwin@test.com")).head.body should include ("Stackpot: WON")
+    f.testEmailClient.emailsSent.filter(_.to.contains("stackpotdinnerwin@test.com")).head.body should include ("Win A Dinner: WON")
 
     f.testEmailClient.emailsSent.filter(_.to.contains("none@test.com")) should have size 0
   }
@@ -117,6 +139,13 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     whenHttp(server).`match`(
       get("/click.php/e970742/h39771/s121a5583e9/"),
       parameter("uuid", "***REMOVED***"))
+      .`then`(ok, resourceContent(resourceName))
+  }
+
+  def stackPotWebpageIsRetrieved(server: StubServer, resourceName: String) = {
+    whenHttp(server).`match`(
+      get("/stackpot/"),
+      parameter("reminder", "***REMOVED***"))
       .`then`(ok, resourceContent(resourceName))
   }
 

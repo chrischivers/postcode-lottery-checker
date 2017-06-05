@@ -1,14 +1,16 @@
 package com.postcodelotterychecker
 
 import com.typesafe.config.ConfigFactory
-import scala.collection.JavaConverters._
 
-case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config)
+case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config)
 case class VisionApiConfig(apiKey: String)
-case class PostcodeCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
-case class DinnerCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
 case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
 case class S3Config(usersAddress: String)
+
+case class PostcodeCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
+case class DinnerCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
+case class StackpotCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
+case class QuidcoHitterConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
 
 object ConfigLoader {
 
@@ -23,6 +25,14 @@ object ConfigLoader {
       DinnerCheckerConfig(
         defaultConfigFactory.getString("dinnerChecker.directWebAddressPrefix"),
         defaultConfigFactory.getString("dinnerChecker.directWebAddressSuffix")
+      ),
+      StackpotCheckerConfig(
+        defaultConfigFactory.getString("stackpotChecker.directWebAddressPrefix"),
+        defaultConfigFactory.getString("stackpotChecker.directWebAddressSuffix")
+      ),
+      QuidcoHitterConfig(
+        defaultConfigFactory.getString("quidcoHitter.directWebAddressPrefix"),
+        defaultConfigFactory.getString("quidcoHitter.directWebAddressSuffix")
       ),
       VisionApiConfig(
         defaultConfigFactory.getString("visionApiKey")

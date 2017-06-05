@@ -11,7 +11,7 @@ import scala.util.Random
 
 class DinnerCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config)
+  case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testConfig: Config)
 
   val winnerUsersFromWebpage = List(
     DinnerUserName("Winner1"),
@@ -32,11 +32,10 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
     val testConfig = defaultConfig.copy(
       dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
       s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile")))
-    val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
 
-    val dinnerChecker = new DinnerChecker(testConfig, users)
-    val testFixture = FixtureParam(dinnerChecker, restitoServer, testEmailClient, testConfig)
+    val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
+    val testFixture = FixtureParam(dinnerChecker, restitoServer, testConfig)
 
     try {
       withFixture(test.toNoArgTest(testFixture))

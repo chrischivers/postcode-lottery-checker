@@ -13,18 +13,22 @@ object Main extends App with StrictLogging {
     val emailClient = new DefaultEmailClient(config.emailerConfig)
     val users = new UsersFetcher(config.s3Config).getUsers
 
-    val postcodeChecker = new PostcodeChecker(config, users)
-    val dinnerChecker = new DinnerChecker(config, users)
+    val postcodeChecker = new PostcodeChecker(config.postcodeCheckerConfig, users)
+    val stackpotChecker = new StackpotChecker(config.stackpotCheckerConfig, users)
+    val dinnerChecker = new DinnerChecker(config.dinnerCheckerConfig, users)
+    val quidcoHitter = new QuidcoHitter(config.quidcoHitterConfig)
 
     val notificationDispatcher = new NotificationDispatcher(emailClient)
 
     val runner = for {
       postCodeResults <- postcodeChecker.run
+      stackpotResults <- stackpotChecker.run
       dinnerResults <- dinnerChecker.run
-      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2)
+      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2)
+      _ <- quidcoHitter.run
     } yield ()
 
-    Await.result(runner, 1 minute)
+    Await.result(runner, 2 minute)
   }
   start
 }

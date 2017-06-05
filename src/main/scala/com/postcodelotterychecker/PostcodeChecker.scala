@@ -1,21 +1,18 @@
 package com.postcodelotterychecker
 
-import java.io.ByteArrayOutputStream
-import java.net.URL
-
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaj.http.{Http, HttpOptions}
 
-class PostcodeChecker(config: Config, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
   private def startWithDirectWebAddress: Future[(UserResults, Postcode)] = {
     Future {
-      logger.info("Starting using direct web address")
-      val directWebAddress = config.postcodeCheckerConfig.directWebAddressPrefix + config.postcodeCheckerConfig.directWebAddressSuffix
+      logger.info("Postcode Checker: Starting using direct web address")
+      val directWebAddress = postcodeCheckerConfig.directWebAddressPrefix + postcodeCheckerConfig.directWebAddressSuffix
       logger.info(s"using direct web address $directWebAddress")
       val winningPostcode = getWinningResult(directWebAddress)
       logger.info(s"winning postcode obtained: $winningPostcode")
@@ -58,28 +55,10 @@ class PostcodeChecker(config: Config, users: List[User])(implicit executionConte
     }
 
     logger.info(s"Image url suffix retrieved: $imageUrlSuffix")
-    config.postcodeCheckerConfig.directWebAddressPrefix  + imageUrlSuffix
+    postcodeCheckerConfig.directWebAddressPrefix  + imageUrlSuffix
   }
 
-
   private def getByteArrayFromImage(imageUrl: String): Array[Byte] = {
-
-    val url = new URL(imageUrl)
-    val output = new ByteArrayOutputStream
-      val inputStream = url.openStream
-      try {
-        val buffer = new Array[Byte](1024)
-        var n = inputStream.read(buffer)
-        do {
-          output.write(buffer, 0, n)
-          n = inputStream.read(buffer)
-        } while (n != -1)
-
-      } catch {
-        case e: Exception => logger.error(s"Error converting image to byte array", e)
-      } finally {
-        if (inputStream != null) inputStream.close()
-      }
-    output.toByteArray
+    Http(imageUrl).asBytes.body
   }
 }
