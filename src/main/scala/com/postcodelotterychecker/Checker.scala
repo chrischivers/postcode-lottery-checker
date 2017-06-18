@@ -7,7 +7,8 @@ import scala.concurrent.Future
 
 case class Postcode(value: String)
 case class DinnerUserName(value: String)
-case class User(email: String, postCodesWatching: Option[List[Postcode]], dinnerUsersWatching: Option[List[DinnerUserName]])
+case class User(email: String, postCodesWatching: Option[List[Postcode]], dinnerUsersWatching: Option[List[DinnerUserName]], emojiSetsWatching: Option[List[Set[Emoji]]])
+case class Emoji(id: String)
 
 trait Checker[A] {
 

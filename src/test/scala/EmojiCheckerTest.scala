@@ -1,0 +1,68 @@
+import com.postcodelotterychecker._
+import com.typesafe.config.ConfigFactory
+import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
+import com.xebialabs.restito.semantics.Action._
+import com.xebialabs.restito.semantics.Condition._
+import com.xebialabs.restito.server.StubServer
+import org.jsoup.Jsoup
+import org.scalatest.{Matchers, fixture}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Random
+
+class EmojiCheckerTest extends fixture.FunSuite with Matchers {
+
+  case class FixtureParam(emojiChecker: EmojiChecker, restitoServer: RestitoServer, testConfig: Config, users: List[User])
+
+  val winningEmojisFromPage: Set[Emoji] = Set("1f60a", "1f609", "1f60d", "1f911", "1f914").map(Emoji)
+
+  def withFixture(test: OneArgTest) = {
+
+    val port = 7000 + Random.nextInt(1000)
+    val restitoServer = new RestitoServer(port)
+    restitoServer.start()
+    val urlPrefix = "http://localhost:" + port
+
+    val defaultConfig = ConfigLoader.defaultConfig
+    val testConfig = defaultConfig.copy(
+      emojiCheckerConfig  = defaultConfig.emojiCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
+      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+    )
+    val users = new UsersFetcher(testConfig.s3Config).getUsers
+    val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
+    val testFixture = FixtureParam(emojiChecker, restitoServer, testConfig, users)
+
+    try {
+      withFixture(test.toNoArgTest(testFixture))
+    }
+    finally {
+      restitoServer.stop()
+    }
+  }
+
+  test("Winning emoji set should be identified from Postcode Checker web address") { f =>
+
+    webpageIsRetrieved(f.restitoServer.server, "emoji/emoji-test-webpage.html")
+
+    val emojisObtained = f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.emojiCheckerConfig.directWebAddressSuffix)
+    emojisObtained should contain theSameElementsAs winningEmojisFromPage
+  }
+
+
+  test("Unknown webpage response should throw an exception") { f =>
+
+    webpageIsRetrieved(f.restitoServer.server, "emoji/invalid-emoji-test-webpage.html")
+
+    assertThrows[RuntimeException] {
+      f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.emojiCheckerConfig.directWebAddressSuffix)
+    }
+  }
+
+  def webpageIsRetrieved(server: StubServer, resourceName: String) = {
+    whenHttp(server).`match`(
+      get("/"),
+      parameter("uuid", "***REMOVED***"))
+      .`then`(ok, resourceContent(resourceName))
+  }
+}
+

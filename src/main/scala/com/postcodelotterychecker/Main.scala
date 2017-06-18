@@ -17,6 +17,7 @@ object Main extends App with StrictLogging {
     val stackpotChecker = new StackpotChecker(config.stackpotCheckerConfig, users)
     val dinnerChecker = new DinnerChecker(config.dinnerCheckerConfig, users)
     val quidcoHitter = new QuidcoHitter(config.quidcoHitterConfig)
+    val emojiChecker = new EmojiChecker(config.emojiCheckerConfig, users)
 
     val notificationDispatcher = new NotificationDispatcher(emailClient)
 
@@ -24,7 +25,8 @@ object Main extends App with StrictLogging {
       postCodeResults <- postcodeChecker.run
       stackpotResults <- stackpotChecker.run
       dinnerResults <- dinnerChecker.run
-      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2)
+      emojiResults <- emojiChecker.run
+      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, emojiResults._1, emojiResults._2)
       _ <- quidcoHitter.run
     } yield ()
 

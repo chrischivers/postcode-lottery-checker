@@ -28,7 +28,7 @@ class DinnerChecker(dinnerCheckerConfig: DinnerCheckerConfig, users: List[User])
     val list = (doc >> texts(".name")).toSet.toList
     logger.info("Winning User names: " + list)
     if (list.isEmpty) throw new RuntimeException("No dinner winners found on webpage")
-    list.map(DinnerUserName)
+    list.map(str => DinnerUserName(str.toLowerCase))
   }
 
   private def processResult(listOfWinningNames: List[DinnerUserName]): Map[User, Option[Boolean]] = {

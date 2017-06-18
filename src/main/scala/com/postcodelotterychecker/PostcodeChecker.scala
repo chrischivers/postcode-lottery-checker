@@ -32,7 +32,7 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
       logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
       postCodeFromVisionApi match {
         case None => throw new RuntimeException("No postcode returned from vision API")
-        case Some(result) => Postcode(result)
+        case Some(result) => Postcode(result.toUpperCase)
       }
     }
 

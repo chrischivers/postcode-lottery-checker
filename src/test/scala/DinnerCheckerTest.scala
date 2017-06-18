@@ -14,12 +14,12 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
   case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testConfig: Config)
 
   val winnerUsersFromWebpage = List(
-    DinnerUserName("Winner1"),
-    DinnerUserName("Winner2"),
-    DinnerUserName("Winner3"),
-    DinnerUserName("Winner4"),
-    DinnerUserName("Winner5"),
-    DinnerUserName("Winner6"))
+    DinnerUserName("winner1"),
+    DinnerUserName("winner2"),
+    DinnerUserName("winner3"),
+    DinnerUserName("winner4"),
+    DinnerUserName("winner5"),
+    DinnerUserName("winner6"))
 
   def withFixture(test: OneArgTest) = {
 

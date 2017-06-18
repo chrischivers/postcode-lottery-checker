@@ -135,6 +135,30 @@ class UsersFetcherTest extends fixture.FunSuite with Matchers {
       user.postCodesWatching shouldBe None
   }
 
+  test("UsersFetcher should fetch dinner users json and parse, converting all values to lower case") { f =>
+
+    val usersJson =
+      """
+        |{
+        |  "users": [
+        |    { "email" : "test@test.com",
+        |      "dinnerUsersWatching" : ["TESTUSER1", "TESTUSER2"]
+        |    }
+        |  ]
+        |}
+      """.stripMargin
+
+    usersJsonIsRetrieved(usersJson, f.restitoServer.server)
+
+    f.usersFetcher.getUsers should have size 1
+    val user = f.usersFetcher.getUsers.head
+    user.email shouldBe "test@test.com"
+    user.dinnerUsersWatching.value should contain (DinnerUserName("testuser1"))
+    user.dinnerUsersWatching.value should contain (DinnerUserName("testuser2"))
+    user.postCodesWatching shouldBe None
+  }
+
+
 
   def usersJsonIsRetrieved(usersJson: String, server: StubServer) = {
     whenHttp(server).`match`(

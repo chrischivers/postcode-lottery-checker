@@ -30,7 +30,7 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
     val list = (doc >> texts(".result-text")).toSet.toList
     logger.info("Stackpot: Winning Postcodes: " + list)
     if (list.isEmpty) throw new RuntimeException("No stackpot winners found on webpage")
-    list.map(str => Postcode(str.replace(" ", "")))
+    list.map(str => Postcode(str.replace(" ", "").toUpperCase))
   }
 
   private def processResult(winningPostcodes: List[Postcode]): Map[User, Option[Boolean]] = {

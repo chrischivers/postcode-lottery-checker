@@ -14,19 +14,21 @@ trait EmailClient {
 
 class DefaultEmailClient(emailerConfig: EmailerConfig) extends EmailClient with StrictLogging {
 
+  val properties = new Properties()
+  properties.put("mail.transport.protocol", "smtp")
+  properties.put("mail.smtp.auth", "true")
+  properties.put("mail.smtp.starttls.enable", "true")
+  properties.put("mail.smtp.user", emailerConfig.smtpUsername)
+  properties.put("mail.smtp.password", emailerConfig.smtpPassword)
+  properties.put("mail.smtp.host", emailerConfig.smtpHost)
+  properties.put("mail.smtp.port", emailerConfig.smtpPort.toString)
+  val session: Session = Session.getInstance(properties, new Authenticator() {
+    override protected def getPasswordAuthentication = new PasswordAuthentication(emailerConfig.smtpUsername, emailerConfig.smtpPassword)
+  })
+  session.setDebug(true)
+
   override def sendEmail(email: Email): Unit = {
 
-    val properties = new Properties()
-    properties.put("mail.smtp.auth", "true")
-    properties.put("mail.smtp.starttls.enable", "true")
-    properties.put("mail.smtp.user", emailerConfig.smtpUsername)
-    properties.put("mail.smtp.password", emailerConfig.smtpPassword)
-    properties.put("mail.smtp.host", emailerConfig.smtpHost)
-    properties.put("mail.smtp.port", emailerConfig.smtpPort.toString)
-    val session = Session.getInstance(properties, new Authenticator() {
-      override protected def getPasswordAuthentication = new PasswordAuthentication(emailerConfig.smtpUsername, emailerConfig.smtpPassword)
-    })
-    session.setDebug(true)
     val message = new MimeMessage(session)
 
     message.setFrom(new InternetAddress(emailerConfig.fromAddress))
