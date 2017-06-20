@@ -11,7 +11,7 @@ import scala.util.Random
 
 class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, restitoServer: RestitoServer, testConfig: Config, users: List[User])
+  case class FixtureParam(postcodeChecker: PostcodeChecker, restitoServer: RestitoServer, postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])
 
   val winningPostcodeFromImage = Postcode("PR67LJ")
 
@@ -28,8 +28,9 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
       s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
     )
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users)
-    val testFixture = FixtureParam(postcodeChecker, restitoServer, testConfig, users)
+    val visionAPIClient = new VisionAPIClient(testConfig.visionApiConfig)
+    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient)
+    val testFixture = FixtureParam(postcodeChecker, restitoServer, testConfig.postcodeCheckerConfig, users)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -41,36 +42,36 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
   test("Readable postcode should be identified from Postcode Checker web address") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.postcodeCheckerConfig.uuid, "postcode/postcode-test-webpage.html")
     imageIsRetrieved(f.restitoServer.server, "postcode/test-postcode-image.php")
 
-    val postcodeObtained = f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
+    val postcodeObtained = f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.postcodeCheckerConfig.directWebAddressSuffix + f.postcodeCheckerConfig.uuid)
     postcodeObtained should equal(winningPostcodeFromImage)
   }
 
   test("Unreadable postcode should throw an exception") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "postcode/postcode-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.postcodeCheckerConfig.uuid, "postcode/postcode-test-webpage.html")
     imageIsRetrieved(f.restitoServer.server, "postcode/non-readable-postcode-image.php")
 
     assertThrows[RuntimeException] {
-      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
+      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.postcodeCheckerConfig.directWebAddressSuffix + f.postcodeCheckerConfig.uuid)
     }
   }
 
   test("Unknown webpage response should throw an exception") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "postcode/invalid-postcode-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.postcodeCheckerConfig.uuid, "postcode/invalid-postcode-test-webpage.html")
 
     assertThrows[RuntimeException] {
-      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.postcodeCheckerConfig.directWebAddressSuffix)
+      f.postcodeChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.postcodeCheckerConfig.directWebAddressSuffix + f.postcodeCheckerConfig.uuid)
     }
   }
 
-  def webpageIsRetrieved(server: StubServer, resourceName: String) = {
+  def webpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
     whenHttp(server).`match`(
       get("/"),
-      parameter("reminder", "***REMOVED***"))
+      parameter("reminder", uuid))
       .`then`(ok, resourceContent(resourceName))
   }
 

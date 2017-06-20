@@ -14,7 +14,7 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
   private def startWithDirectWebAddress: Future[(UserResults, List[Postcode])] = {
     Future {
       logger.info("Stackpot: Starting using direct web address")
-      val directWebAddress = stackpotCheckerConfig.directWebAddressPrefix + stackpotCheckerConfig.directWebAddressSuffix
+      val directWebAddress = stackpotCheckerConfig.directWebAddressPrefix + stackpotCheckerConfig.directWebAddressSuffix + stackpotCheckerConfig.uuid
       logger.info(s"using direct web address $directWebAddress")
       val winningPostcodes = getWinningResult(directWebAddress)
       logger.info(s"Stackpot: ${winningPostcodes.size} postcodes obtained")

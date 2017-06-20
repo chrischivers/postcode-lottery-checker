@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 class QuidcoHitterTest extends fixture.FunSuite with Matchers with ScalaFutures {
 
-  case class FixtureParam(quidcoHitter: QuidcoHitter, restitoServer: RestitoServer, testConfig: Config)
+  case class FixtureParam(quidcoHitter: QuidcoHitter, restitoServer: RestitoServer, quidcoHitterConfig: QuidcoHitterConfig)
 
   override implicit val patienceConfig = PatienceConfig(2 minutes, 2 seconds)
 
@@ -31,7 +31,7 @@ class QuidcoHitterTest extends fixture.FunSuite with Matchers with ScalaFutures 
     )
     val quidcoHitter = new QuidcoHitter(testConfig.quidcoHitterConfig)
 
-    val testFixture = FixtureParam(quidcoHitter, restitoServer,  testConfig)
+    val testFixture = FixtureParam(quidcoHitter, restitoServer,  testConfig.quidcoHitterConfig)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -43,16 +43,16 @@ class QuidcoHitterTest extends fixture.FunSuite with Matchers with ScalaFutures 
 
   test("Quidco webpage is hit and returns status code 200") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server)
+    webpageIsRetrieved(f.restitoServer.server, f.quidcoHitterConfig.uuid)
 
     f.quidcoHitter.run.futureValue
     f.restitoServer.server.getCalls.asScala should have size 1
   }
 
-  def webpageIsRetrieved(server: StubServer) = {
+  def webpageIsRetrieved(server: StubServer, uuid: String) = {
     whenHttp(server).`match`(
       get("/quidco/"),
-      parameter("reminder", "***REMOVED***"))
+      parameter("reminder", uuid))
       .`then`(ok)
   }
 }

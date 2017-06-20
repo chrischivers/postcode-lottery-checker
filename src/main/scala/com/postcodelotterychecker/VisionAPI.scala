@@ -8,7 +8,7 @@ import io.circe.parser._
 
 import scalaj.http.{Http, HttpOptions}
 
-object VisionAPI extends StrictLogging {
+class VisionAPIClient(visionApiConfig: VisionApiConfig) extends StrictLogging {
 
   def makeRequest(imageByteArray: Array[Byte]) = {
     val imageBase64 = convertImageToBase64(imageByteArray)
@@ -22,10 +22,9 @@ object VisionAPI extends StrictLogging {
   }
 
   private def getApiResponse(imageBase64: Array[Byte]): String = {
-    val url = "https://vision.googleapis.com/v1/images:annotate" + "?key=***REMOVED***"
+    val url = s"https://vision.googleapis.com/v1/images:annotate?key=${visionApiConfig.apiKey}"
     val requests =
       s"""
-        |
         |  {"requests":[
         |    {
         |      "image":{
@@ -40,7 +39,6 @@ object VisionAPI extends StrictLogging {
         |    }
         |  ]
         |}
-        |
     """.stripMargin
 
     Http(url)

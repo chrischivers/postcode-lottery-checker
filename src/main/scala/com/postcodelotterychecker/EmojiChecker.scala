@@ -14,7 +14,7 @@ class EmojiChecker(emojiCheckerConfig: EmojiCheckerConfig, users: List[User])(im
   private def startWithDirectWebAddress: Future[(UserResults, Set[Emoji])] = {
     Future {
       logger.info("Emoji Checker: Starting using direct web address")
-      val directWebAddress = emojiCheckerConfig.directWebAddressPrefix + emojiCheckerConfig.directWebAddressSuffix
+      val directWebAddress = emojiCheckerConfig.directWebAddressPrefix + emojiCheckerConfig.directWebAddressSuffix + emojiCheckerConfig.uuid
       logger.info(s"using direct web address $directWebAddress")
       val winningEmojis = getWinningResult(directWebAddress)
       logger.info(s"winning emoji sequence obtained: $winningEmojis")

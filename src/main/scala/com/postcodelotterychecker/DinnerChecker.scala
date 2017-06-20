@@ -14,7 +14,7 @@ class DinnerChecker(dinnerCheckerConfig: DinnerCheckerConfig, users: List[User])
   private def startWithDirectWebAddress = {
     Future {
       logger.info("Dinner Checker: Starting using direct web address")
-      val directWebAddress = dinnerCheckerConfig.directWebAddressPrefix + dinnerCheckerConfig.directWebAddressSuffix
+      val directWebAddress = dinnerCheckerConfig.directWebAddressPrefix + dinnerCheckerConfig.directWebAddressSuffix + dinnerCheckerConfig.uuid
       val winnerList = getWinningResult(directWebAddress)
       (processResult(winnerList), winnerList)
     }

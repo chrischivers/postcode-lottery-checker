@@ -12,7 +12,7 @@ import scala.util.Random
 
 class EmojiCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(emojiChecker: EmojiChecker, restitoServer: RestitoServer, testConfig: Config, users: List[User])
+  case class FixtureParam(emojiChecker: EmojiChecker, restitoServer: RestitoServer, emojiCheckerConfig: EmojiCheckerConfig, users: List[User])
 
   val winningEmojisFromPage: Set[Emoji] = Set("1f60a", "1f609", "1f60d", "1f911", "1f914").map(Emoji)
 
@@ -30,7 +30,7 @@ class EmojiCheckerTest extends fixture.FunSuite with Matchers {
     )
     val users = new UsersFetcher(testConfig.s3Config).getUsers
     val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
-    val testFixture = FixtureParam(emojiChecker, restitoServer, testConfig, users)
+    val testFixture = FixtureParam(emojiChecker, restitoServer, testConfig.emojiCheckerConfig, users)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -42,26 +42,26 @@ class EmojiCheckerTest extends fixture.FunSuite with Matchers {
 
   test("Winning emoji set should be identified from Postcode Checker web address") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "emoji/emoji-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.emojiCheckerConfig.uuid, "emoji/emoji-test-webpage.html")
 
-    val emojisObtained = f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.emojiCheckerConfig.directWebAddressSuffix)
+    val emojisObtained = f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.emojiCheckerConfig.directWebAddressSuffix + f.emojiCheckerConfig.uuid)
     emojisObtained should contain theSameElementsAs winningEmojisFromPage
   }
 
 
   test("Unknown webpage response should throw an exception") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "emoji/invalid-emoji-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.emojiCheckerConfig.uuid, "emoji/invalid-emoji-test-webpage.html")
 
     assertThrows[RuntimeException] {
-      f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.emojiCheckerConfig.directWebAddressSuffix)
+      f.emojiChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.emojiCheckerConfig.directWebAddressSuffix + f.emojiCheckerConfig.uuid)
     }
   }
 
-  def webpageIsRetrieved(server: StubServer, resourceName: String) = {
+  def webpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
     whenHttp(server).`match`(
       get("/"),
-      parameter("uuid", "***REMOVED***"))
+      parameter("uuid", uuid))
       .`then`(ok, resourceContent(resourceName))
   }
 }

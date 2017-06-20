@@ -2,16 +2,17 @@ package com.postcodelotterychecker
 
 import com.typesafe.config.ConfigFactory
 
-case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, emojiCheckerConfig: EmojiCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config)
+case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, surveyDrawCheckerConfig: SurveyDrawCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, emojiCheckerConfig: EmojiCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config)
 case class VisionApiConfig(apiKey: String)
 case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
 case class S3Config(usersAddress: String)
 
-case class PostcodeCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
-case class DinnerCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
-case class StackpotCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
-case class QuidcoHitterConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
-case class EmojiCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String)
+case class PostcodeCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
+case class DinnerCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
+case class StackpotCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
+case class SurveyDrawCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
+case class QuidcoHitterConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
+case class EmojiCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
 
 object ConfigLoader {
 
@@ -21,23 +22,33 @@ object ConfigLoader {
     Config(
       PostcodeCheckerConfig(
         defaultConfigFactory.getString("postcodeChecker.directWebAddressPrefix"),
-        defaultConfigFactory.getString("postcodeChecker.directWebAddressSuffix")
+        defaultConfigFactory.getString("postcodeChecker.directWebAddressSuffix"),
+        defaultConfigFactory.getString("postcodeChecker.uuid")
       ),
       DinnerCheckerConfig(
         defaultConfigFactory.getString("dinnerChecker.directWebAddressPrefix"),
-        defaultConfigFactory.getString("dinnerChecker.directWebAddressSuffix")
+        defaultConfigFactory.getString("dinnerChecker.directWebAddressSuffix"),
+        defaultConfigFactory.getString("dinnerChecker.uuid")
       ),
       StackpotCheckerConfig(
         defaultConfigFactory.getString("stackpotChecker.directWebAddressPrefix"),
-        defaultConfigFactory.getString("stackpotChecker.directWebAddressSuffix")
+        defaultConfigFactory.getString("stackpotChecker.directWebAddressSuffix"),
+        defaultConfigFactory.getString("stackpotChecker.uuid")
+      ),
+      SurveyDrawCheckerConfig(
+        defaultConfigFactory.getString("surveyDrawChecker.directWebAddressPrefix"),
+        defaultConfigFactory.getString("surveyDrawChecker.directWebAddressSuffix"),
+        defaultConfigFactory.getString("surveyDrawChecker.uuid")
       ),
       QuidcoHitterConfig(
         defaultConfigFactory.getString("quidcoHitter.directWebAddressPrefix"),
-        defaultConfigFactory.getString("quidcoHitter.directWebAddressSuffix")
+        defaultConfigFactory.getString("quidcoHitter.directWebAddressSuffix"),
+        defaultConfigFactory.getString("quidcoHitter.uuid")
       ),
       EmojiCheckerConfig(
         defaultConfigFactory.getString("emojiChecker.directWebAddressPrefix"),
-        defaultConfigFactory.getString("emojiChecker.directWebAddressSuffix")
+        defaultConfigFactory.getString("emojiChecker.directWebAddressSuffix"),
+        defaultConfigFactory.getString("emojiChecker.uuid")
       ),
       VisionApiConfig(
         defaultConfigFactory.getString("visionApiKey")

@@ -5,14 +5,14 @@ import com.typesafe.scalalogging.StrictLogging
 import scala.concurrent.{ExecutionContext, Future}
 import scalaj.http.{Http, HttpOptions}
 
-class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
   private def startWithDirectWebAddress: Future[(UserResults, Postcode)] = {
     Future {
       logger.info("Postcode Checker: Starting using direct web address")
-      val directWebAddress = postcodeCheckerConfig.directWebAddressPrefix + postcodeCheckerConfig.directWebAddressSuffix
+      val directWebAddress = postcodeCheckerConfig.directWebAddressPrefix + postcodeCheckerConfig.directWebAddressSuffix + postcodeCheckerConfig.uuid
       logger.info(s"using direct web address $directWebAddress")
       val winningPostcode = getWinningResult(directWebAddress)
       logger.info(s"winning postcode obtained: $winningPostcode")
@@ -28,7 +28,7 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
 
       val imageByteArray = getByteArrayFromImage(imageURL)
 
-      val postCodeFromVisionApi = VisionAPI.makeRequest(imageByteArray)
+      val postCodeFromVisionApi = visionAPIClient.makeRequest(imageByteArray)
       logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
       postCodeFromVisionApi match {
         case None => throw new RuntimeException("No postcode returned from vision API")

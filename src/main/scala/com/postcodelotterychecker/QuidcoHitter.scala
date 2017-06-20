@@ -11,7 +11,7 @@ class QuidcoHitter(quidcoHitterConfig: QuidcoHitterConfig)(implicit val executio
   def run = {
     Future {
       logger.info("Quidco Hitter: Starting using direct web address")
-      val directWebAddress = quidcoHitterConfig.directWebAddressPrefix + quidcoHitterConfig.directWebAddressSuffix
+      val directWebAddress = quidcoHitterConfig.directWebAddressPrefix + quidcoHitterConfig.directWebAddressSuffix + quidcoHitterConfig.uuid
 
       val browser = JsoupBrowser()
       val doc = browser.get(directWebAddress)

@@ -159,7 +159,6 @@ class UsersFetcherTest extends fixture.FunSuite with Matchers {
   }
 
 
-
   def usersJsonIsRetrieved(usersJson: String, server: StubServer) = {
     whenHttp(server).`match`(
       get("/"))

@@ -11,7 +11,7 @@ import scala.util.Random
 
 class DinnerCheckerTest extends fixture.FunSuite with Matchers {
 
-  case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, testConfig: Config)
+  case class FixtureParam(dinnerChecker: DinnerChecker, restitoServer: RestitoServer, dinnerCheckerConfig: DinnerCheckerConfig)
 
   val winnerUsersFromWebpage = List(
     DinnerUserName("winner1"),
@@ -35,7 +35,7 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
     val users = new UsersFetcher(testConfig.s3Config).getUsers
 
     val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
-    val testFixture = FixtureParam(dinnerChecker, restitoServer, testConfig)
+    val testFixture = FixtureParam(dinnerChecker, restitoServer, testConfig.dinnerCheckerConfig)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -47,24 +47,24 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
 
   test("list of winning users should be identified from webpage") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "dinner/dinner-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.dinnerCheckerConfig.uuid, "dinner/dinner-test-webpage.html")
 
-    val usersObtained = f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
+    val usersObtained = f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.dinnerCheckerConfig.directWebAddressSuffix + f.dinnerCheckerConfig.uuid)
     usersObtained should contain theSameElementsAs winnerUsersFromWebpage
   }
 
   test("Unknown webpage response should throw an exception") { f =>
 
-    webpageIsRetrieved(f.restitoServer.server, "dinner/invalid-dinner-test-webpage.html")
+    webpageIsRetrieved(f.restitoServer.server, f.dinnerCheckerConfig.uuid, "dinner/invalid-dinner-test-webpage.html")
 
     assertThrows[RuntimeException] {
-      f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.testConfig.dinnerCheckerConfig.directWebAddressSuffix)
+      f.dinnerChecker.getWinningResult("http://localhost:" + f.restitoServer.port + f.dinnerCheckerConfig.directWebAddressSuffix + f.dinnerCheckerConfig.uuid)
     }
   }
-  def webpageIsRetrieved(server: StubServer, resourceName: String) = {
+  def webpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
     whenHttp(server).`match`(
-      get("/click.php/e970742/h39771/s121a5583e9/"),
-      parameter("uuid", "***REMOVED***"))
+      get("/"),
+      parameter("uuid", uuid))
       .`then`(ok, resourceContent(resourceName))
   }
 }
