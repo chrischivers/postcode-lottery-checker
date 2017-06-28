@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 
 case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, surveyDrawCheckerConfig: SurveyDrawCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, emojiCheckerConfig: EmojiCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config, screenshotApiConfig: ScreenshotApiConfig)
 case class VisionApiConfig(apiKey: String)
-case class ScreenshotApiConfig(url: String, apiKey: String)
+case class ScreenshotApiConfig(url: String, apiKey: String, millisBetweenAttempts: Long)
 case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String, numberAttempts: Int, secondsBetweenAttempts: Int)
 case class S3Config(usersAddress: String)
 
@@ -68,7 +68,8 @@ object ConfigLoader {
       ),
       ScreenshotApiConfig(
         defaultConfigFactory.getString("screenshotApi.url"),
-        defaultConfigFactory.getString("screenshotApi.apiKey")
+        defaultConfigFactory.getString("screenshotApi.apiKey"),
+        defaultConfigFactory.getLong("screenshotApi.millisBetweenRequests")
       )
     )
   }
