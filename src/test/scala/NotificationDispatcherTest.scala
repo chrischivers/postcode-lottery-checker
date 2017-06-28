@@ -15,7 +15,7 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
 
   case class FixtureParam(postcodeChecker: PostcodeChecker, dinnerChecker: DinnerChecker, stackpotChecker: StackpotChecker, emojiChecker: EmojiChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
 
-  val winningPostcodeFromImage = Postcode("PR67LJ")
+  val winningPostcodeFromWebpage = Postcode("DL11JU")
 
   val winnerUsersFromWebpage = List(
     DinnerUserName("Winner1"),
@@ -25,9 +25,9 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     DinnerUserName("Winner5"),
     DinnerUserName("Winner6"))
 
-  val winningStackpotPostcodes = List(Postcode("NR31TT"), Postcode("YO104DD"), Postcode("SO316LJ"), Postcode("CH35QQ"), Postcode("BT521SS"), Postcode("GY101SB"), Postcode("DN156BA"), Postcode("SL36QA"), Postcode("IG45NF"), Postcode("PL53HW"), Postcode("ST27EB"), Postcode("BS207JP"), Postcode("BT538JY"), Postcode("SG86HL"), Postcode("SE171NJ"), Postcode("PO121GN"), Postcode("OL146QG"), Postcode("PE28TR"), Postcode("SA18RD"), Postcode("WS20DL"), Postcode("GL32AP"))
+  val winningStackpotPostcodes = List(Postcode("E61QY"), Postcode("HA27LB"), Postcode("NE311AW"), Postcode("ST78PL"), Postcode("CH16HH"), Postcode("CV312DE"), Postcode("EN106HX"), Postcode("HU74PR"), Postcode("BN235AB"), Postcode("TN23FH"), Postcode("PR23DUU"), Postcode("L335YF"), Postcode("PR4OTS"), Postcode("ML74NG"), Postcode("SNT3LQ"), Postcode("EH44TO"), Postcode("RH68BJ"), Postcode("TN21ONJ"), Postcode("BT152LN"), Postcode("TF29FH"), Postcode("BB8OQU"), Postcode("BT473HN"), Postcode("BT179BB"), Postcode("CB62XE"), Postcode("BD133DY"), Postcode("CH446PD"), Postcode("B762SS"), Postcode("RM176AZ"), Postcode("PA28HS"), Postcode("PE3730"))
 
-  val winningSurveyDrawPostcode = Postcode("HD58NA")
+  val winningSurveyDrawPostcode = Postcode("B357LQ")
 
   val winningEmojis = Set("1f60a", "1f609", "1f60d", "1f911", "1f914").map(Emoji)
 
@@ -52,19 +52,17 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
     val visionAPIClient = new VisionAPIClient(testConfig.visionApiConfig)
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient)
+    val screenshotAPIClient = new StubScreenshotApiClient(testConfig.screenshotApiConfig)
+    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient, screenshotAPIClient)
     val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
-    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users)
-    val surveyDrawChecker = new SurveyDrawChecker(testConfig.surveyDrawCheckerConfig, users)
+    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users, visionAPIClient, screenshotAPIClient)
+    val surveyDrawChecker = new SurveyDrawChecker(testConfig.surveyDrawCheckerConfig, users, visionAPIClient, screenshotAPIClient)
     val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
     val notificationDispatcher = new NotificationDispatcher(testEmailClient)
     val testFixture = FixtureParam(postcodeChecker, dinnerChecker, stackpotChecker, emojiChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
 
     try {
-      postCodeWebpageIsRetrieved(restitoServer.server, testConfig.postcodeCheckerConfig.uuid, "postcode/postcode-test-webpage.html")
-      postCodeImageIsRetrieved(restitoServer.server, "postcode/test-postcode-image.php")
       dinnerWebpageIsRetrieved(restitoServer.server, testConfig.dinnerCheckerConfig.uuid, "dinner/dinner-test-webpage.html")
-      stackPotWebpageIsRetrieved(restitoServer.server, testConfig.stackpotCheckerConfig.uuid, "stackpot/stackpot-test-webpage.html")
       surveyDrawWebpageIsRetrieved(restitoServer.server, testConfig.surveyDrawCheckerConfig.uuid, "survey-draw/survey-draw-test-webpage.html")
       emojiWebpageIsRetrieved(restitoServer.server, testConfig.emojiCheckerConfig.uuid, "emoji/emoji-test-webpage.html")
 
@@ -112,7 +110,7 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
       f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningEmoji.id)
     })
 
-    f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningPostcodeFromImage.value)
+    f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningPostcodeFromWebpage.value)
   }
 
   test("Test scenario where there is no win") { f =>
@@ -191,33 +189,10 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     f.testEmailClient.emailsSent.filter(_.to.contains("none@test.com")) should have size 0
   }
 
-
-  def postCodeWebpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
-    whenHttp(server).`match`(
-      get("/"),
-      parameter("reminder", uuid))
-      .`then`(ok, resourceContent(resourceName))
-  }
-
-  def postCodeImageIsRetrieved(server: StubServer, resourceName: String) = {
-    whenHttp(server).`match`(
-      get("/speech/2.php"),
-      parameter("s", "4"),
-      parameter("amp;v", "1496434635"))
-      .`then`(ok, resourceContent(resourceName))
-  }
-
   def dinnerWebpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
     whenHttp(server).`match`(
       get("/"),
       parameter("uuid", uuid))
-      .`then`(ok, resourceContent(resourceName))
-  }
-
-  def stackPotWebpageIsRetrieved(server: StubServer, uuid: String, resourceName: String) = {
-    whenHttp(server).`match`(
-      get("/stackpot/"),
-      parameter("reminder", uuid))
       .`then`(ok, resourceContent(resourceName))
   }
 

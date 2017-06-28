@@ -2,9 +2,10 @@ package com.postcodelotterychecker
 
 import com.typesafe.config.ConfigFactory
 
-case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, surveyDrawCheckerConfig: SurveyDrawCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, emojiCheckerConfig: EmojiCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config)
+case class Config(postcodeCheckerConfig: PostcodeCheckerConfig, dinnerCheckerConfig: DinnerCheckerConfig, stackpotCheckerConfig: StackpotCheckerConfig, surveyDrawCheckerConfig: SurveyDrawCheckerConfig, quidcoHitterConfig: QuidcoHitterConfig, emojiCheckerConfig: EmojiCheckerConfig, visionApiConfig: VisionApiConfig, emailerConfig: EmailerConfig, s3Config: S3Config, screenshotApiConfig: ScreenshotApiConfig)
 case class VisionApiConfig(apiKey: String)
-case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String)
+case class ScreenshotApiConfig(url: String, apiKey: String)
+case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String, numberAttempts: Int, secondsBetweenAttempts: Int)
 case class S3Config(usersAddress: String)
 
 case class PostcodeCheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String)
@@ -58,10 +59,16 @@ object ConfigLoader {
         defaultConfigFactory.getString("email.smtpHost"),
         defaultConfigFactory.getInt("email.smtpPort"),
         defaultConfigFactory.getString("email.smtpUsername"),
-        defaultConfigFactory.getString("email.smtpPassword")
+        defaultConfigFactory.getString("email.smtpPassword"),
+        defaultConfigFactory.getInt("email.numberAttempts"),
+        defaultConfigFactory.getInt("email.secondsBetweenAttempts")
       ),
       S3Config(
         defaultConfigFactory.getString("s3.usersfile")
+      ),
+      ScreenshotApiConfig(
+        defaultConfigFactory.getString("screenshotApi.url"),
+        defaultConfigFactory.getString("screenshotApi.apiKey")
       )
     )
   }

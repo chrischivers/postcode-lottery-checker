@@ -14,11 +14,12 @@ object Main extends App with StrictLogging {
     val users = new UsersFetcher(config.s3Config).getUsers
 
     val visionAPIClient = new VisionAPIClient(config.visionApiConfig)
-    val postcodeChecker = new PostcodeChecker(config.postcodeCheckerConfig, users, visionAPIClient)
-    val stackpotChecker = new StackpotChecker(config.stackpotCheckerConfig, users)
+    val screenshotAPIClient = new ScreenshotAPIClient(config.screenshotApiConfig)
+    val postcodeChecker = new PostcodeChecker(config.postcodeCheckerConfig, users, visionAPIClient, screenshotAPIClient)
+    val stackpotChecker = new StackpotChecker(config.stackpotCheckerConfig, users, visionAPIClient, screenshotAPIClient)
     val dinnerChecker = new DinnerChecker(config.dinnerCheckerConfig, users)
     val quidcoHitter = new QuidcoHitter(config.quidcoHitterConfig)
-    val surveyDrawChecker = new SurveyDrawChecker(config.surveyDrawCheckerConfig, users)
+    val surveyDrawChecker = new SurveyDrawChecker(config.surveyDrawCheckerConfig, users, visionAPIClient, screenshotAPIClient)
     val emojiChecker = new EmojiChecker(config.emojiCheckerConfig, users)
 
     val notificationDispatcher = new NotificationDispatcher(emailClient)

@@ -1,11 +1,12 @@
 package com.postcodelotterychecker
 
+import java.io.{BufferedOutputStream, FileOutputStream}
+
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaj.http.{Http, HttpOptions}
 
-class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
@@ -21,20 +22,23 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
   }
 
   override def getWinningResult(webAddress: String): Postcode = {
-      logger.info(s"Processing web address: $webAddress")
+    logger.info(s"Processing web address: $webAddress")
 
-      val imageURL = getImageURLFromWebAddress(webAddress)
-      logger.info(s"Using image address: $imageURL")
+    logger.info(s"Getting screenshot byte array from web address: $webAddress")
+    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = SmallSquareViewPort, userAgent = SafariMobile, delay = 0)
 
-      val imageByteArray = getByteArrayFromImage(imageURL)
+//    val bos = new BufferedOutputStream(new FileOutputStream("postcode-screenshot-byte-array.png"))
+//    bos.write(imageByteArray)
+//    bos.close()
 
-      val postCodeFromVisionApi = visionAPIClient.makeRequest(imageByteArray)
-      logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
-      postCodeFromVisionApi match {
-        case None => throw new RuntimeException("No postcode returned from vision API")
-        case Some(result) => Postcode(result.toUpperCase)
-      }
+    val postCodeFromVisionApi = visionAPIClient.makePostcodeCheckerRequest(imageByteArray)
+    logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
+
+    postCodeFromVisionApi match {
+      case None => throw new RuntimeException("No postcode returned from vision API")
+      case Some(result) => Postcode(result.toUpperCase)
     }
+  }
 
   private def processResult(winningPostcode: Postcode): Map[User, Option[Boolean]] = {
     users.map(user => {
@@ -42,23 +46,5 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
         watching.contains(winningPostcode)
       })
     }).toMap
-  }
-
-  private def getImageURLFromWebAddress(url: String): String = {
-
-    val response = Http(url).options(HttpOptions.followRedirects(true)).asString
-    val responseLines = response.body.split("\n")
-
-    val imageUrlSuffix = responseLines.find(_.contains("The current winning postcode")) match {
-      case None => throw new RuntimeException("Text 'The current winning postcode' not found in webpage retrieved")
-      case Some(line) => line.split("src=\"")(1).split("\"/>")(0)
-    }
-
-    logger.info(s"Image url suffix retrieved: $imageUrlSuffix")
-    postcodeCheckerConfig.directWebAddressPrefix  + imageUrlSuffix
-  }
-
-  private def getByteArrayFromImage(imageUrl: String): Array[Byte] = {
-    Http(imageUrl).asBytes.body
   }
 }

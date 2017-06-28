@@ -1,13 +1,12 @@
 package com.postcodelotterychecker
 
+import java.io.{BufferedOutputStream, FileOutputStream}
+
 import com.typesafe.scalalogging.StrictLogging
-import net.ruippeixotog.scalascraper.browser.JsoupBrowser
-import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
-import net.ruippeixotog.scalascraper.dsl.DSL._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
+class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
 
   override def run: Future[(UserResults, List[Postcode])] = startWithDirectWebAddress
 
@@ -24,13 +23,23 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
   }
 
   override def getWinningResult(webAddress: String): List[Postcode] = {
+    logger.info(s"Stackpot: Processing web address: $webAddress")
 
-    val browser = JsoupBrowser()
-    val doc = browser.get(webAddress)
-    val list = (doc >> texts(".result-text")).toSet.toList
-    logger.info("Stackpot: Winning Postcodes: " + list)
-    if (list.isEmpty) throw new RuntimeException("No stackpot winners found on webpage")
-    list.map(str => Postcode(str.replace(" ", "").toUpperCase))
+    logger.info(s"Stackpot: Getting screenshot byte array from web address: $webAddress")
+    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = LongThinViewPort, userAgent = SafariMobile, delay = 2)
+
+//    val bos = new BufferedOutputStream(new FileOutputStream("stackpot-screenshot-byte-array.png"))
+//    bos.write(imageByteArray)
+//    bos.close()
+
+    val postCodesFromVisionApi = visionAPIClient.makeStackpotCheckerRequest(imageByteArray)
+    logger.info(s"Stackpot: Postcode obtained from Vision API: $postCodesFromVisionApi")
+
+    postCodesFromVisionApi match {
+      case None => throw new RuntimeException("No stackpot winners found on webpage (none returned)")
+      case Some(list) if list.isEmpty => throw new RuntimeException("No stackpot winners found on webpage (empty list)")
+      case Some (list) => list.map(str => Postcode(str.replace(" ", "").toUpperCase))
+    }
   }
 
   private def processResult(winningPostcodes: List[Postcode]): Map[User, Option[Boolean]] = {

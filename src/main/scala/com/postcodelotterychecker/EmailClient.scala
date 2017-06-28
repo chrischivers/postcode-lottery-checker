@@ -6,6 +6,8 @@ import javax.mail.{Session, _}
 
 import com.typesafe.scalalogging.StrictLogging
 
+import scala.util.{Failure, Success, Try}
+
 case class Email(subject: String, body: String, to: String)
 
 trait EmailClient {
@@ -36,11 +38,25 @@ class DefaultEmailClient(emailerConfig: EmailerConfig) extends EmailClient with 
     message.setSubject(email.subject)
     message.setText(email.body)
 
-    try {
+    retry(emailerConfig.numberAttempts) {
       logger.info(s"Sending email to ${email.to}")
       Transport.send(message)
-    } catch {
-      case e: Exception => logger.error(s"Error sending email to ${email.to}", e)
+    }
+  }
+
+  // Code borrowed from http://stackoverflow.com/questions/7930814/whats-the-scala-way-to-implement-a-retry-able-call-like-this-one
+  @annotation.tailrec
+  private def retry[T](n: Int)(fn: => T): T = {
+    Try {
+      fn
+    } match {
+      case Success(x) => x
+      case _ if n > 1 => {
+        logger.info(s"Retrying operation after ${emailerConfig.secondsBetweenAttempts} seconds. Attempt ${(emailerConfig.numberAttempts - n) + 1}")
+        Thread.sleep(emailerConfig.secondsBetweenAttempts * 1000)
+        retry(n - 1)(fn)
+      }
+      case Failure(e) => throw e
     }
   }
 }
