@@ -26,15 +26,15 @@ object Main extends App with StrictLogging {
 
     val runner = for {
       postCodeResults <- postcodeChecker.run
-      stackpotResults <- stackpotChecker.run
-      dinnerResults <- dinnerChecker.run
-      surveyDrawResults <- surveyDrawChecker.run
-      emojiResults <- emojiChecker.run
-      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
-      _ <- quidcoHitter.run
+////      stackpotResults <- stackpotChecker.run
+////      dinnerResults <- dinnerChecker.run
+//      surveyDrawResults <- surveyDrawChecker.run
+////      emojiResults <- emojiChecker.run
+////      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
+////      _ <- quidcoHitter.run
     } yield ()
 
-    Await.result(runner, 2 minute)
+    Await.result(runner, 4 minute)
   }
   start
 }

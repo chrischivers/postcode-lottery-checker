@@ -27,9 +27,9 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
     logger.info(s"Getting screenshot byte array from web address: $webAddress")
     val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = SmallSquareViewPort, userAgent = SafariMobile, delay = 0)
 
-//    val bos = new BufferedOutputStream(new FileOutputStream("postcode-screenshot-byte-array.png"))
-//    bos.write(imageByteArray)
-//    bos.close()
+    val bos = new BufferedOutputStream(new FileOutputStream("postcode-screenshot-byte-array.png"))
+    bos.write(imageByteArray)
+    bos.close()
 
     val postCodeFromVisionApi = visionAPIClient.makePostcodeCheckerRequest(imageByteArray)
     logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")

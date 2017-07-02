@@ -52,7 +52,7 @@ class ScreenshotAPIClient(screenshotApiConfig: ScreenshotApiConfig) extends Stri
         ("fullpage", if (fullpage) "1" else "0"),
         ("delay", delay.toString)))
       .options(HttpOptions.followRedirects(true))
-      .timeout(30000, 1200000)
+      .timeout(30000, 120000)
       .asBytes
 
     lastTimeRun = System.currentTimeMillis()

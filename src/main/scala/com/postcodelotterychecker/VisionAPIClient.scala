@@ -10,9 +10,14 @@ import scalaj.http.{Http, HttpOptions}
 
 class VisionAPIClient(visionApiConfig: VisionApiConfig) extends StrictLogging {
 
+
+  val postcodeRegEx = "^([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([AZa-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9]?[A-Za-z])))) [0-9][A-Za-z]{2})$".r
+
+
   def makePostcodeCheckerRequest(imageByteArray: Array[Byte]): Option[String] = {
     val descriptionStrings = getDescriptionWords(imageByteArray)
     descriptionStrings.map(words => {
+      logger.info("Postcode Checker: word list obtained from vision API: " + words.mkString(", "))
         val precedingBlock = words.indexWhere(_.startsWith("Main dra"))
         words(precedingBlock + 1).replaceAll(" ", "")
       })
@@ -21,6 +26,7 @@ class VisionAPIClient(visionApiConfig: VisionApiConfig) extends StrictLogging {
   def makeSurveyDrawCheckerRequest(imageByteArray: Array[Byte]): Option[String] = {
     val descriptionStrings = getDescriptionWords(imageByteArray)
     descriptionStrings.map(words => {
+      logger.info("Survey Draw Checker: word list obtained from vision API: " + words.mkString(", "))
         val precedingBlock = words.indexWhere(_.startsWith("Survey Dra"))
         words(precedingBlock + 1).replaceAll(" ", "")
       })
@@ -29,6 +35,7 @@ class VisionAPIClient(visionApiConfig: VisionApiConfig) extends StrictLogging {
   def makeStackpotCheckerRequest(imageByteArray: Array[Byte]): Option[List[String]] = {
     val descriptionStrings = getDescriptionWords(imageByteArray)
     descriptionStrings.map(words => {
+      logger.info("Stackpot Checker: word list obtained from vision API: " + words.mkString(", "))
         val wordsNoSpaces = words.map(_.replaceAll(" ", ""))
         val precedingBlock = wordsNoSpaces.indexWhere(_.startsWith("Stackpot"))
         val procedingBlock = wordsNoSpaces.indexWhere(_.length == 3)

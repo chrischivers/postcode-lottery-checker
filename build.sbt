@@ -14,6 +14,7 @@ libraryDependencies +=  "org.scalaj" %% "scalaj-http" % "2.3.0"
 libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "2.0.0-RC2"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "com.xebialabs.restito" % "restito" % "0.9.1" % "test"
+libraryDependencies += "net.sourceforge.htmlunit" % "htmlunit" % "2.27"
 
 val circeVersion = "0.8.0"
 libraryDependencies ++= Seq(
