@@ -26,7 +26,8 @@ class SurveyDrawChecker(surveyDrawCheckerConfig: SurveyDrawCheckerConfig, users:
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
       val htmlUnitWebClient = new HtmlUnitWebClient
       val page = htmlUnitWebClient.getPage(webAddress)
-      println(page.asXml())
+      logger.debug(page.asXml().mkString)
+
       val text = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
       logger.info(s"text retrieved $text")
       val trimmedText = text.trim().split("\n").map(_.trim).apply(0)

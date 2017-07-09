@@ -31,8 +31,6 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
       val htmlUnitWebClient = new HtmlUnitWebClient
       val page = htmlUnitWebClient.getPage(webAddress)
-//      new URL(webAddress) #> new File("postcode-checker-page.html") !!
-
       logger.debug(page.asXml().mkString)
       val text = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
       logger.info(s"text retrieved $text")

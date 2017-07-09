@@ -41,7 +41,7 @@ object Main extends App with StrictLogging {
 
     } yield ()
 
-    Await.result(runner, 20 minute)
+    Await.result(runner, 5 minute)
   }
   start
 }

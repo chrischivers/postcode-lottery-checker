@@ -30,6 +30,7 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
       val htmlUnitWebClient = new HtmlUnitWebClient
       val page = htmlUnitWebClient.getPage(webAddress)
+      logger.debug(page.asXml().mkString)
 
       val texts = page.getElementById("result-header").getElementsByTagName("p")
       texts.asScala.toList.map(htmlElem => {

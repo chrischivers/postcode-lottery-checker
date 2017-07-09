@@ -8,13 +8,15 @@ import com.gargoylesoftware.htmlunit.util.FalsifyingWebConnection
 
 class HtmlUnitWebClient extends StrictLogging {
 
-  def getPage(webAddress: String, waitTime: Int = 120000): HtmlPage = {
+  def getPage(webAddress: String): HtmlPage = {
     logger.info(s"Html unit web client getting page from web address $webAddress")
 
     val webClient = new WebClient(BrowserVersion.INTERNET_EXPLORER)
     webClient.getOptions.setThrowExceptionOnScriptError(false)
     webClient.getOptions.setThrowExceptionOnFailingStatusCode(false)
     webClient.getOptions.setRedirectEnabled(true)
+    webClient.getOptions.setGeolocationEnabled(false)
+    webClient.getOptions.setMaxInMemory(1024 * 1024 * 500)
     webClient.getOptions.setDoNotTrackEnabled(true)
     webClient.getOptions.setDownloadImages(false)
     webClient.getOptions.setPopupBlockerEnabled(true)
