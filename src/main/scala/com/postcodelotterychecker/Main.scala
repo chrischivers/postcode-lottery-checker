@@ -24,20 +24,20 @@ object Main extends App with StrictLogging {
 
 
     val postcodeCheckerResults = postcodeChecker.run
-//    val stackpotCheckerResults = stackpotChecker.run
-//    val dinnerCheckerResults = dinnerChecker.run
-//    val quidcoHitterResults = quidcoHitter.run
-//    val surveyDrawCheckerResults = surveyDrawChecker.run
-//    val emojiCheckerResults = emojiChecker.run
+    val stackpotCheckerResults = stackpotChecker.run
+    val dinnerCheckerResults = dinnerChecker.run
+    val quidcoHitterResults = quidcoHitter.run
+    val surveyDrawCheckerResults = surveyDrawChecker.run
+    val emojiCheckerResults = emojiChecker.run
 
     val runner = for {
       postCodeResults <- postcodeCheckerResults
-//      stackpotResults <- stackpotCheckerResults
-//      dinnerResults <- dinnerCheckerResults
-//      surveyDrawResults <- surveyDrawCheckerResults
-//      emojiResults <- emojiCheckerResults
-//      _ <- quidcoHitterResults
-//      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
+      stackpotResults <- stackpotCheckerResults
+      dinnerResults <- dinnerCheckerResults
+      surveyDrawResults <- surveyDrawCheckerResults
+      emojiResults <- emojiCheckerResults
+      _ <- quidcoHitterResults
+      _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
 
     } yield ()
 
