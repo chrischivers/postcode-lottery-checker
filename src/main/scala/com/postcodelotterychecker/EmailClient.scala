@@ -4,6 +4,7 @@ import java.util.Properties
 import javax.mail.internet.{InternetAddress, MimeMessage}
 import javax.mail.{Session, _}
 
+import com.postcodelotterychecker.utils.Utils
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.util.{Failure, Success, Try}
@@ -38,25 +39,11 @@ class DefaultEmailClient(emailerConfig: EmailerConfig) extends EmailClient with 
     message.setSubject(email.subject)
     message.setText(email.body)
 
-    retry(emailerConfig.numberAttempts) {
+    Utils.retry(emailerConfig.numberAttempts, emailerConfig.secondsBetweenAttempts) {
       logger.info(s"Sending email to ${email.to}")
       Transport.send(message)
     }
   }
 
-  // Code borrowed from http://stackoverflow.com/questions/7930814/whats-the-scala-way-to-implement-a-retry-able-call-like-this-one
-  @annotation.tailrec
-  private def retry[T](n: Int)(fn: => T): T = {
-    Try {
-      fn
-    } match {
-      case Success(x) => x
-      case _ if n > 1 => {
-        logger.info(s"Retrying operation after ${emailerConfig.secondsBetweenAttempts} seconds. Attempt ${(emailerConfig.numberAttempts - n) + 1}")
-        Thread.sleep(emailerConfig.secondsBetweenAttempts * 1000)
-        retry(n - 1)(fn)
-      }
-      case Failure(e) => throw e
-    }
-  }
+
 }

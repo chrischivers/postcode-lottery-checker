@@ -1,12 +1,16 @@
 package com.postcodelotterychecker
 
 import java.io.{BufferedOutputStream, FileOutputStream}
-
+import java.net.URL
+import sys.process._
+import java.net.URL
+import java.io.File
+import com.postcodelotterychecker.utils.Utils
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
@@ -24,19 +28,19 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
   override def getWinningResult(webAddress: String): Postcode = {
     logger.info(s"Processing web address: $webAddress")
 
-    logger.info(s"Getting screenshot byte array from web address: $webAddress")
-    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = SmallSquareViewPort, userAgent = SafariMobile, delay = 0)
+    Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
+      val htmlUnitWebClient = new HtmlUnitWebClient
+      val page = htmlUnitWebClient.getPage(webAddress)
+//      new URL(webAddress) #> new File("postcode-checker-page.html") !!
 
-    val bos = new BufferedOutputStream(new FileOutputStream("postcode-screenshot-byte-array.png"))
-    bos.write(imageByteArray)
-    bos.close()
-
-    val postCodeFromVisionApi = visionAPIClient.makePostcodeCheckerRequest(imageByteArray)
-    logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
-
-    postCodeFromVisionApi match {
-      case None => throw new RuntimeException("No postcode returned from vision API")
-      case Some(result) => Postcode(result.toUpperCase)
+      logger.debug(page.asXml().mkString)
+      val text = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+      logger.info(s"text retrieved $text")
+      val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
+      logger.info(s"trimmed text retrieved $trimmedText")
+      val postcode = Postcode(trimmedText)
+      if (Utils.validatePostcodeAgainstRegex(postcode)) Postcode(postcode.value.replace(" ", ""))
+      else throw new RuntimeException(s"Postcode $postcode unable to be validated")
     }
   }
 

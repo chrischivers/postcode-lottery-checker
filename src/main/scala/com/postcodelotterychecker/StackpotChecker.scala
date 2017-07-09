@@ -1,12 +1,14 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream}
+import java.io.{BufferedOutputStream, FileOutputStream, ObjectOutputStream}
 
+import collection.JavaConverters._
+import com.postcodelotterychecker.utils.Utils
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
+class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
 
   override def run: Future[(UserResults, List[Postcode])] = startWithDirectWebAddress
 
@@ -23,22 +25,22 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
   }
 
   override def getWinningResult(webAddress: String): List[Postcode] = {
-    logger.info(s"Stackpot: Processing web address: $webAddress")
+    logger.info(s"Processing web address: $webAddress")
 
-    logger.info(s"Stackpot: Getting screenshot byte array from web address: $webAddress")
-    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = LongThinViewPort, userAgent = SafariMobile, delay = 2)
+    Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
+      val htmlUnitWebClient = new HtmlUnitWebClient
+      val page = htmlUnitWebClient.getPage(webAddress)
 
-//    val bos = new BufferedOutputStream(new FileOutputStream("stackpot-screenshot-byte-array.png"))
-//    bos.write(imageByteArray)
-//    bos.close()
-
-    val postCodesFromVisionApi = visionAPIClient.makeStackpotCheckerRequest(imageByteArray)
-    logger.info(s"Stackpot: Postcode obtained from Vision API: $postCodesFromVisionApi")
-
-    postCodesFromVisionApi match {
-      case None => throw new RuntimeException("No stackpot winners found on webpage (none returned)")
-      case Some(list) if list.isEmpty => throw new RuntimeException("No stackpot winners found on webpage (empty list)")
-      case Some (list) => list.map(str => Postcode(str.replace(" ", "").toUpperCase))
+      val texts = page.getElementById("result-header").getElementsByTagName("p")
+      texts.asScala.toList.map(htmlElem => {
+        val text = htmlElem.getTextContent
+        logger.info(s"text retrieved $text")
+        val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
+        logger.info(s"trimmed text retrieved $trimmedText")
+        val postcode = Postcode(trimmedText)
+        if (Utils.validatePostcodeAgainstRegex(postcode)) Postcode(postcode.value.replace(" ", ""))
+        else throw new RuntimeException(s"Postcode $postcode unable to be validated")
+      })
     }
   }
 

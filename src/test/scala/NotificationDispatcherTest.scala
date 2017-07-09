@@ -13,7 +13,7 @@ import scala.util.Random
 
 class NotificationDispatcherTest extends fixture.FunSuite with Matchers with ScalaFutures {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, dinnerChecker: DinnerChecker, stackpotChecker: StackpotChecker, emojiChecker: EmojiChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
+  case class FixtureParam(testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
 
   val winningPostcodeFromWebpage = Postcode("DL11JU")
 
@@ -35,52 +35,22 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
 
     implicit val patienceConfig = PatienceConfig(2 minutes, 2 seconds)
 
-    val port = 7000 + Random.nextInt(1000)
-    val restitoServer = new RestitoServer(port)
-    restitoServer.start()
-    val urlPrefix = "http://localhost:" + port
-
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      postcodeCheckerConfig = defaultConfig.postcodeCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      stackpotCheckerConfig = defaultConfig.stackpotCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      surveyDrawCheckerConfig = defaultConfig.surveyDrawCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      emojiCheckerConfig = defaultConfig.emojiCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
       s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
     )
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val visionAPIClient = new VisionAPIClient(testConfig.visionApiConfig)
-    val screenshotAPIClient = new StubScreenshotApiClient(testConfig.screenshotApiConfig)
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
-    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val surveyDrawChecker = new SurveyDrawChecker(testConfig.surveyDrawCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
+
     val notificationDispatcher = new NotificationDispatcher(testEmailClient)
-    val testFixture = FixtureParam(postcodeChecker, dinnerChecker, stackpotChecker, emojiChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
+    val testFixture = FixtureParam(testEmailClient, testConfig, notificationDispatcher, users)
 
-    try {
-      dinnerWebpageIsRetrieved(restitoServer.server, testConfig.dinnerCheckerConfig.uuid, "dinner/dinner-test-webpage.html")
-      surveyDrawWebpageIsRetrieved(restitoServer.server, testConfig.surveyDrawCheckerConfig.uuid, "survey-draw/survey-draw-test-webpage.html")
-      emojiWebpageIsRetrieved(restitoServer.server, testConfig.emojiCheckerConfig.uuid, "emoji/emoji-test-webpage.html")
-
-      (for {
-        postCodeResults <- postcodeChecker.run
-        dinnerResults <- dinnerChecker.run
-        stackpotResults <- stackpotChecker.run
-        surveyDrawResults <- surveyDrawChecker.run
-        emojiResults <- emojiChecker.run
+    for {
         _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
-      } yield ()).futureValue
+      } yield ().futureValue
 
       withFixture(test.toNoArgTest(testFixture))
     }
-    finally {
-      restitoServer.stop()
-    }
-  }
 
   test("Correct Number of emails are sent out") { f =>
 
