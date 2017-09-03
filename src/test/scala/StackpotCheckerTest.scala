@@ -13,12 +13,12 @@ class StackpotCheckerTest extends fixture.FunSuite with Matchers {
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
 
-    val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users)
-    val testFixture = FixtureParam(stackpotChecker, testConfig.stackpotCheckerConfig, users)
+    val testUsers = new UsersFetcher(testConfig.s3Config).getUsers
+    val stackpotChecker = new StackpotChecker(testConfig, testUsers)
+    val testFixture = FixtureParam(stackpotChecker, testConfig.stackpotCheckerConfig, testUsers)
 
     try {
       withFixture(test.toNoArgTest(testFixture))

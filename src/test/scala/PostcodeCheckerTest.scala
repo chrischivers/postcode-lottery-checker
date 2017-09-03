@@ -17,12 +17,12 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
-    val users = new UsersFetcher(testConfig.s3Config).getUsers
+    val testUsers = new UsersFetcher(testConfig.s3Config).getUsers
+    val postcodeChecker = new PostcodeChecker(testConfig, testUsers)
 
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users)
-    val testFixture = FixtureParam(postcodeChecker, testConfig.postcodeCheckerConfig, users)
+    val testFixture = FixtureParam(postcodeChecker, testConfig.postcodeCheckerConfig, testUsers)
 
     try {
       withFixture(test.toNoArgTest(testFixture))

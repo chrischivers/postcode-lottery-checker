@@ -7,8 +7,6 @@ import javax.mail.{Session, _}
 import com.postcodelotterychecker.utils.Utils
 import com.typesafe.scalalogging.StrictLogging
 
-import scala.util.{Failure, Success, Try}
-
 case class Email(subject: String, body: String, to: String)
 
 trait EmailClient {

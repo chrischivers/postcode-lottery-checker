@@ -12,12 +12,11 @@ class SurveyDrawCheckerTest extends fixture.FunSuite with Matchers {
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
-
-    val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val surveyDrawChecker = new SurveyDrawChecker(testConfig.surveyDrawCheckerConfig, users)
-    val testFixture = FixtureParam(surveyDrawChecker, testConfig.surveyDrawCheckerConfig, users)
+    val testUsers = new UsersFetcher(testConfig.s3Config).getUsers
+    val surveyDrawChecker = new SurveyDrawChecker(testConfig, testUsers)
+    val testFixture = FixtureParam(surveyDrawChecker, testConfig.surveyDrawCheckerConfig, testUsers)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -29,7 +28,5 @@ class SurveyDrawCheckerTest extends fixture.FunSuite with Matchers {
   test("Postcode should be identified from Survey Draw web address") { f =>
     noException should be thrownBy f.surveyDrawChecker.getWinningResult(f.surveyDrawCheckerConfig.directWebAddressPrefix + f.surveyDrawCheckerConfig.directWebAddressSuffix + f.surveyDrawCheckerConfig.uuid)
   }
-
-
 }
 

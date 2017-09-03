@@ -1,14 +1,51 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream, ObjectOutputStream}
-
-import collection.JavaConverters._
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
 import com.postcodelotterychecker.utils.Utils
-import com.typesafe.scalalogging.StrictLogging
+import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-import scala.concurrent.{ExecutionContext, Future}
 
-class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
+object StackpotCheckerHandlerManual extends App {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val stackpotChecker = new StackpotChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  val result = for {
+    stackpotResults <- stackpotChecker.run
+  } yield resultsToS3Uploader.uploadStackpotCheckerResults(stackpotResults._1, stackpotResults._2, "1234567")
+
+  Await.result(result, lambdaWaitTime)
+}
+
+
+class StackpotCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val stackpotChecker = new StackpotChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      stackpotResults <- stackpotChecker.run
+    } yield resultsToS3Uploader.uploadStackpotCheckerResults(stackpotResults._1, stackpotResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class StackpotChecker(config: Config, users: List[User]) extends Checker[List[Postcode]] {
+
+  val stackpotCheckerConfig: StackpotCheckerConfig = config.stackpotCheckerConfig
 
   override def run: Future[(UserResults, List[Postcode])] = startWithDirectWebAddress
 
@@ -28,10 +65,8 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
     logger.info(s"Processing web address: $webAddress")
 
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
-      val htmlUnitWebClient = new HtmlUnitWebClient
       val page = htmlUnitWebClient.getPage(webAddress)
-      logger.debug(page.asXml().mkString)
-
+//      logger.debug(page.asXml().mkString)
       val texts = page.getElementById("result-header").getElementsByTagName("p")
       texts.asScala.toList.map(htmlElem => {
         val text = htmlElem.getTextContent
@@ -45,7 +80,7 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
     }
   }
 
-  private def processResult(winningPostcodes: List[Postcode]): Map[User, Option[Boolean]] = {
+  private def processResult(winningPostcodes: List[Postcode]): UserResults = {
     users.map(user => {
       user -> user.postCodesWatching.map(watching => {
         watching.intersect(winningPostcodes).nonEmpty

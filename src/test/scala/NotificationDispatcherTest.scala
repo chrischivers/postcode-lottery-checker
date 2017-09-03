@@ -1,3 +1,4 @@
+import com.postcodelotterychecker.NotificationDispatcher.ResultsBundle
 import com.postcodelotterychecker._
 import com.typesafe.config.ConfigFactory
 import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
@@ -21,7 +22,7 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
@@ -41,7 +42,12 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     val emojiResults = Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))
 
     (for {
-        _ <- notificationDispatcher.dispatchNotifications(users, postcodeUserList, postCodeResults, dinnerUserList, dinnerResults, stackPotUserList, stackpotResults, surveyDrawUserList, surveyDrawResults, emojiUserList, emojiResults)
+        _ <- notificationDispatcher.dispatchNotifications(users,
+          Some(ResultsBundle(postcodeUserList, postCodeResults)),
+          Some(ResultsBundle(dinnerUserList, dinnerResults)),
+          Some(ResultsBundle(stackPotUserList, stackpotResults)),
+          Some(ResultsBundle(surveyDrawUserList, surveyDrawResults)),
+          Some(ResultsBundle(emojiUserList, emojiResults)))
       } yield ()).futureValue
 
       withFixture(test.toNoArgTest(testFixture))

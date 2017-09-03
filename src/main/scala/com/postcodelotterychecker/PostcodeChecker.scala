@@ -1,16 +1,49 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream}
-import java.net.URL
-import sys.process._
-import java.net.URL
-import java.io.File
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
 import com.postcodelotterychecker.utils.Utils
-import com.typesafe.scalalogging.StrictLogging
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
 
-import scala.concurrent.{ExecutionContext, Future}
+object PostcodeCheckerHandlerManual extends App {
 
-class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val postcodeChecker = new PostcodeChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+    val result = for {
+      postCodeResults <- postcodeChecker.run
+    } yield resultsToS3Uploader.uploadPostcodeCheckerResults(postCodeResults._1, postCodeResults._2, "1234567")
+
+    Await.result(result, lambdaWaitTime)
+}
+
+
+class PostcodeCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val postcodeChecker = new PostcodeChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      postCodeResults <- postcodeChecker.run
+    } yield resultsToS3Uploader.uploadPostcodeCheckerResults(postCodeResults._1, postCodeResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class PostcodeChecker(config: Config, users: List[User]) extends Checker[Postcode] {
+
+  private val postcodeCheckerConfig: PostcodeCheckerConfig = config.postcodeCheckerConfig
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
@@ -29,10 +62,9 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
     logger.info(s"Processing web address: $webAddress")
 
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
-      val htmlUnitWebClient = new HtmlUnitWebClient
       val page = htmlUnitWebClient.getPage(webAddress)
-      logger.debug(page.asXml().mkString)
-      val text = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+//            logger.debug(page.asXml().mkString)
+      val text = page.getElementById("result").getElementsByTagName("p").get(0).getTextContent
       logger.info(s"text retrieved $text")
       val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
       logger.info(s"trimmed text retrieved $trimmedText")
@@ -42,7 +74,7 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
     }
   }
 
-  private def processResult(winningPostcode: Postcode): Map[User, Option[Boolean]] = {
+  private def processResult(winningPostcode: Postcode): UserResults = {
     users.map(user => {
       user -> user.postCodesWatching.map(watching => {
         watching.contains(winningPostcode)
