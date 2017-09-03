@@ -1,15 +1,51 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream}
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import com.gargoylesoftware.htmlunit.html.{HtmlAnchor, HtmlPage}
+import com.postcodelotterychecker.utils.Utils
+import org.w3c.dom.html.HTMLElement
 
-import com.typesafe.scalalogging.StrictLogging
-import net.ruippeixotog.scalascraper.browser.JsoupBrowser
-import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
-import net.ruippeixotog.scalascraper.dsl.DSL._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-import scala.concurrent.{ExecutionContext, Future}
+object SurveyDrawCheckerHandlerManual extends App {
 
-class SurveyDrawChecker(surveyDrawCheckerConfig: SurveyDrawCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val surveyDrawChecker = new SurveyDrawChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  val result = for {
+    surveyDrawResults <- surveyDrawChecker.run
+  } yield resultsToS3Uploader.uploadPostcodeCheckerResults(surveyDrawResults._1, surveyDrawResults._2, "1234567")
+
+  Await.result(result, lambdaWaitTime)
+}
+
+class SurveyDrawCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val surveyDrawChecker = new SurveyDrawChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      surveyDrawResults <- surveyDrawChecker.run
+    } yield resultsToS3Uploader.uploadSurveyDrawCheckerResults(surveyDrawResults._1, surveyDrawResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class SurveyDrawChecker(config: Config, users: List[User]) extends Checker[Postcode] {
+
+  val surveyDrawCheckerConfig: SurveyDrawCheckerConfig = config.surveyDrawCheckerConfig
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
@@ -27,23 +63,33 @@ class SurveyDrawChecker(surveyDrawCheckerConfig: SurveyDrawCheckerConfig, users:
   override def getWinningResult(webAddress: String): Postcode = {
     logger.info(s"Processing web address: $webAddress")
 
-    logger.info(s"Getting screenshot byte array from web address: $webAddress")
-    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = SmallSquareViewPort, userAgent = SafariMobile, delay = 0)
+    Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
+      val htmlUnitWebClient = new HtmlUnitWebClient
+      val page = htmlUnitWebClient.getPage(webAddress)
+//      logger.debug(page.asXml().mkString)
+      logger.info("clicking link...")
+      page.getFirstByXPath[HtmlAnchor]("//a[@class='reveal btn-link']").click()
+//      logger.debug(page.asXml().mkString)
 
-//    val bos = new BufferedOutputStream(new FileOutputStream("survey-draw-screenshot-byte-array.png"))
-//        bos.write(imageByteArray)
-//        bos.close()
-
-    val postCodeFromVisionApi = visionAPIClient.makeSurveyDrawCheckerRequest(imageByteArray)
-    logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
-
-    postCodeFromVisionApi match {
-      case None => throw new RuntimeException("Survey draw: No postcode returned from vision API")
-      case Some(result) => Postcode(result.toUpperCase)
+      val text = {
+        val t = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+        if (t.contains("Looking for a")) {
+          logger.info("text contained 'Looking for a', waiting longer...")
+          Thread.sleep(10000)
+          htmlUnitWebClient.waitForBackgroundJS(page.getWebClient)
+          page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+        } else t
+      }
+      logger.info(s"text retrieved $text")
+      val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
+      logger.info(s"trimmed text retrieved $trimmedText")
+      val postcode = Postcode(trimmedText)
+      if (Utils.validatePostcodeAgainstRegex(postcode)) Postcode(postcode.value.replace(" ", ""))
+      else throw new RuntimeException(s"Postcode $postcode unable to be validated")
     }
   }
 
-  private def processResult(winningPostcode: Postcode): Map[User, Option[Boolean]] = {
+  private def processResult(winningPostcode: Postcode): UserResults = {
     users.map(user => {
       user -> user.postCodesWatching.map(watching => {
         watching.contains(winningPostcode)

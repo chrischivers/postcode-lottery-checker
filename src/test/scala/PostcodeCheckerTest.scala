@@ -13,19 +13,16 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
 
   case class FixtureParam(postcodeChecker: PostcodeChecker, postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User])
 
-  val winningPostcodeFromWebpage = Postcode("DL11JU")
-
   def withFixture(test: OneArgTest) = {
 
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
-    val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val visionAPIClient = new VisionAPIClient(testConfig.visionApiConfig)
-    val screenshotAPIClient = new StubScreenshotApiClient(testConfig.screenshotApiConfig)
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val testFixture = FixtureParam(postcodeChecker, testConfig.postcodeCheckerConfig, users)
+    val testUsers = new UsersFetcher(testConfig.s3Config).getUsers
+    val postcodeChecker = new PostcodeChecker(testConfig, testUsers)
+
+    val testFixture = FixtureParam(postcodeChecker, testConfig.postcodeCheckerConfig, testUsers)
 
     try {
       withFixture(test.toNoArgTest(testFixture))
@@ -34,10 +31,9 @@ class PostcodeCheckerTest extends fixture.FunSuite with Matchers {
     }
   }
 
-  test("Readable postcode should be identified from Postcode Checker web address") { f =>
+  test("Valid postcode should be identified from Postcode Checker web address") { f =>
 
-    val postcodeObtained = f.postcodeChecker.getWinningResult(f.postcodeCheckerConfig.directWebAddressPrefix + f.postcodeCheckerConfig.directWebAddressSuffix + f.postcodeCheckerConfig.uuid)
-    postcodeObtained should equal(winningPostcodeFromWebpage)
+    noException should be thrownBy f.postcodeChecker.getWinningResult(f.postcodeCheckerConfig.directWebAddressPrefix + f.postcodeCheckerConfig.directWebAddressSuffix + f.postcodeCheckerConfig.uuid)
   }
 }
 

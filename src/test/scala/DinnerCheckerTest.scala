@@ -31,10 +31,11 @@ class DinnerCheckerTest extends fixture.FunSuite with Matchers {
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
       dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile")))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName")))
     val users = new UsersFetcher(testConfig.s3Config).getUsers
 
-    val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
+    val dinnerChecker = new DinnerChecker(testConfig, users)
+
     val testFixture = FixtureParam(dinnerChecker, restitoServer, testConfig.dinnerCheckerConfig)
 
     try {

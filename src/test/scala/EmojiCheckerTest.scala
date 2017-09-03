@@ -26,11 +26,11 @@ class EmojiCheckerTest extends fixture.FunSuite with Matchers {
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
       emojiCheckerConfig  = defaultConfig.emojiCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
-    val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
-    val testFixture = FixtureParam(emojiChecker, restitoServer, testConfig.emojiCheckerConfig, users)
+    val testUsers = new UsersFetcher(testConfig.s3Config).getUsers
+    val emojiChecker = new EmojiChecker(testConfig, testUsers)
+    val testFixture = FixtureParam(emojiChecker, restitoServer, testConfig.emojiCheckerConfig, testUsers)
 
     try {
       withFixture(test.toNoArgTest(testFixture))

@@ -1,12 +1,51 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream}
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import com.postcodelotterychecker.utils.Utils
+import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-import com.typesafe.scalalogging.StrictLogging
 
-import scala.concurrent.{ExecutionContext, Future}
+object StackpotCheckerHandlerManual extends App {
 
-class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[List[Postcode]] with StrictLogging {
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val stackpotChecker = new StackpotChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  val result = for {
+    stackpotResults <- stackpotChecker.run
+  } yield resultsToS3Uploader.uploadStackpotCheckerResults(stackpotResults._1, stackpotResults._2, "1234567")
+
+  Await.result(result, lambdaWaitTime)
+}
+
+
+class StackpotCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val stackpotChecker = new StackpotChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      stackpotResults <- stackpotChecker.run
+    } yield resultsToS3Uploader.uploadStackpotCheckerResults(stackpotResults._1, stackpotResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class StackpotChecker(config: Config, users: List[User]) extends Checker[List[Postcode]] {
+
+  val stackpotCheckerConfig: StackpotCheckerConfig = config.stackpotCheckerConfig
 
   override def run: Future[(UserResults, List[Postcode])] = startWithDirectWebAddress
 
@@ -23,26 +62,25 @@ class StackpotChecker(stackpotCheckerConfig: StackpotCheckerConfig, users: List[
   }
 
   override def getWinningResult(webAddress: String): List[Postcode] = {
-    logger.info(s"Stackpot: Processing web address: $webAddress")
+    logger.info(s"Processing web address: $webAddress")
 
-    logger.info(s"Stackpot: Getting screenshot byte array from web address: $webAddress")
-    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = LongThinViewPort, userAgent = SafariMobile, delay = 2)
-
-//    val bos = new BufferedOutputStream(new FileOutputStream("stackpot-screenshot-byte-array.png"))
-//    bos.write(imageByteArray)
-//    bos.close()
-
-    val postCodesFromVisionApi = visionAPIClient.makeStackpotCheckerRequest(imageByteArray)
-    logger.info(s"Stackpot: Postcode obtained from Vision API: $postCodesFromVisionApi")
-
-    postCodesFromVisionApi match {
-      case None => throw new RuntimeException("No stackpot winners found on webpage (none returned)")
-      case Some(list) if list.isEmpty => throw new RuntimeException("No stackpot winners found on webpage (empty list)")
-      case Some (list) => list.map(str => Postcode(str.replace(" ", "").toUpperCase))
+    Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
+      val page = htmlUnitWebClient.getPage(webAddress)
+//      logger.debug(page.asXml().mkString)
+      val texts = page.getElementById("result-header").getElementsByTagName("p")
+      texts.asScala.toList.map(htmlElem => {
+        val text = htmlElem.getTextContent
+        logger.info(s"text retrieved $text")
+        val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
+        logger.info(s"trimmed text retrieved $trimmedText")
+        val postcode = Postcode(trimmedText)
+        if (Utils.validatePostcodeAgainstRegex(postcode)) Postcode(postcode.value.replace(" ", ""))
+        else throw new RuntimeException(s"Postcode $postcode unable to be validated")
+      })
     }
   }
 
-  private def processResult(winningPostcodes: List[Postcode]): Map[User, Option[Boolean]] = {
+  private def processResult(winningPostcodes: List[Postcode]): UserResults = {
     users.map(user => {
       user -> user.postCodesWatching.map(watching => {
         watching.intersect(winningPostcodes).nonEmpty

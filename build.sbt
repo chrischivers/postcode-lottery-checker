@@ -1,3 +1,5 @@
+import sbt.Keys.test
+
 name := "postcode-lottery-checker"
 
 version := "1.0"
@@ -14,6 +16,15 @@ libraryDependencies +=  "org.scalaj" %% "scalaj-http" % "2.3.0"
 libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "2.0.0-RC2"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "com.xebialabs.restito" % "restito" % "0.9.1" % "test"
+libraryDependencies += "net.sourceforge.htmlunit" % "htmlunit" % "2.27"
+libraryDependencies += "jp.co.bizreach" % "aws-s3-scala_2.11" % "0.0.11"
+libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.11.160"
+libraryDependencies += "com.amazonaws" % "aws-java-sdk-lambda" % "1.11.160"
+libraryDependencies += "com.amazonaws" % "aws-lambda-java-core" % "1.1.0"
+libraryDependencies += "com.amazonaws" % "aws-lambda-java-events" % "1.3.0"
+libraryDependencies += "com.github.cb372" % "scalacache-core_2.11" % "0.9.3"
+libraryDependencies += "com.github.cb372" %% "scalacache-guava" % "0.9.3"
+
 
 val circeVersion = "0.8.0"
 libraryDependencies ++= Seq(
@@ -32,12 +43,14 @@ lazy val commonSettings = Seq(
 lazy val app = (project in file("app")).
   settings(commonSettings: _*).
   settings(
-    mainClass in assembly := Some("com.postcodelotterychecker.Main")
+    mainClass in assembly := Some("com.postcodelotterychecker.Main"),
+    test in assembly := {}
   )
 
 
 lazy val utils = (project in file("utils")).
   settings(commonSettings: _*).
   settings(
-    assemblyJarName in assembly := "utils.jar"
+    assemblyJarName in assembly := "utils.jar",
+    test in assembly := {}
   )

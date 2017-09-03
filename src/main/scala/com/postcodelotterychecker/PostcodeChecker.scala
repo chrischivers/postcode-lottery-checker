@@ -1,12 +1,49 @@
 package com.postcodelotterychecker
 
-import java.io.{BufferedOutputStream, FileOutputStream}
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import com.postcodelotterychecker.utils.Utils
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
 
-import com.typesafe.scalalogging.StrictLogging
+object PostcodeCheckerHandlerManual extends App {
 
-import scala.concurrent.{ExecutionContext, Future}
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val postcodeChecker = new PostcodeChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
 
-class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[User], visionAPIClient: VisionAPIClient, screenshotAPIClient: ScreenshotAPIClient)(implicit executionContext: ExecutionContext) extends Checker[Postcode] with StrictLogging {
+    val result = for {
+      postCodeResults <- postcodeChecker.run
+    } yield resultsToS3Uploader.uploadPostcodeCheckerResults(postCodeResults._1, postCodeResults._2, "1234567")
+
+    Await.result(result, lambdaWaitTime)
+}
+
+
+class PostcodeCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val postcodeChecker = new PostcodeChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      postCodeResults <- postcodeChecker.run
+    } yield resultsToS3Uploader.uploadPostcodeCheckerResults(postCodeResults._1, postCodeResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class PostcodeChecker(config: Config, users: List[User]) extends Checker[Postcode] {
+
+  private val postcodeCheckerConfig: PostcodeCheckerConfig = config.postcodeCheckerConfig
 
   override def run: Future[(UserResults, Postcode)] = startWithDirectWebAddress
 
@@ -24,23 +61,20 @@ class PostcodeChecker(postcodeCheckerConfig: PostcodeCheckerConfig, users: List[
   override def getWinningResult(webAddress: String): Postcode = {
     logger.info(s"Processing web address: $webAddress")
 
-    logger.info(s"Getting screenshot byte array from web address: $webAddress")
-    val imageByteArray = screenshotAPIClient.getScreenshotByteArray(webAddress, fullpage = false, viewPort = SmallSquareViewPort, userAgent = SafariMobile, delay = 0)
-
-//    val bos = new BufferedOutputStream(new FileOutputStream("postcode-screenshot-byte-array.png"))
-//    bos.write(imageByteArray)
-//    bos.close()
-
-    val postCodeFromVisionApi = visionAPIClient.makePostcodeCheckerRequest(imageByteArray)
-    logger.info(s"Postcode obtained from Vision API: $postCodeFromVisionApi")
-
-    postCodeFromVisionApi match {
-      case None => throw new RuntimeException("No postcode returned from vision API")
-      case Some(result) => Postcode(result.toUpperCase)
+    Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
+      val page = htmlUnitWebClient.getPage(webAddress)
+//            logger.debug(page.asXml().mkString)
+      val text = page.getElementById("result").getElementsByTagName("p").get(0).getTextContent
+      logger.info(s"text retrieved $text")
+      val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
+      logger.info(s"trimmed text retrieved $trimmedText")
+      val postcode = Postcode(trimmedText)
+      if (Utils.validatePostcodeAgainstRegex(postcode)) Postcode(postcode.value.replace(" ", ""))
+      else throw new RuntimeException(s"Postcode $postcode unable to be validated")
     }
   }
 
-  private def processResult(winningPostcode: Postcode): Map[User, Option[Boolean]] = {
+  private def processResult(winningPostcode: Postcode): UserResults = {
     users.map(user => {
       user -> user.postCodesWatching.map(watching => {
         watching.contains(winningPostcode)

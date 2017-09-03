@@ -1,3 +1,4 @@
+import com.postcodelotterychecker.NotificationDispatcher.ResultsBundle
 import com.postcodelotterychecker._
 import com.typesafe.config.ConfigFactory
 import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
@@ -13,74 +14,44 @@ import scala.util.Random
 
 class NotificationDispatcherTest extends fixture.FunSuite with Matchers with ScalaFutures {
 
-  case class FixtureParam(postcodeChecker: PostcodeChecker, dinnerChecker: DinnerChecker, stackpotChecker: StackpotChecker, emojiChecker: EmojiChecker, restitoServer: RestitoServer, testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
-
-  val winningPostcodeFromWebpage = Postcode("DL11JU")
-
-  val winnerUsersFromWebpage = List(
-    DinnerUserName("Winner1"),
-    DinnerUserName("Winner2"),
-    DinnerUserName("Winner3"),
-    DinnerUserName("Winner4"),
-    DinnerUserName("Winner5"),
-    DinnerUserName("Winner6"))
-
-  val winningStackpotPostcodes = List(Postcode("E61QY"), Postcode("HA27LB"), Postcode("NE311AW"), Postcode("ST78PL"), Postcode("CH16HH"), Postcode("CV312DE"), Postcode("EN106HX"), Postcode("HU74PR"), Postcode("BN235AB"), Postcode("TN23FH"), Postcode("PR23DUU"), Postcode("L335YF"), Postcode("PR4OTS"), Postcode("ML74NG"), Postcode("SNT3LQ"), Postcode("EH44TO"), Postcode("RH68BJ"), Postcode("TN21ONJ"), Postcode("BT152LN"), Postcode("TF29FH"), Postcode("BB8OQU"), Postcode("BT473HN"), Postcode("BT179BB"), Postcode("CB62XE"), Postcode("BD133DY"), Postcode("CH446PD"), Postcode("B762SS"), Postcode("RM176AZ"), Postcode("PA28HS"), Postcode("PE3730"))
-
-  val winningSurveyDrawPostcode = Postcode("B357LQ")
-
-  val winningEmojis = Set("1f60a", "1f609", "1f60d", "1f911", "1f914").map(Emoji)
+  case class FixtureParam(testEmailClient: StubEmailClient, testConfig: Config, notificationDispatcher: NotificationDispatcher, users: List[User])
 
   def withFixture(test: OneArgTest) = {
 
     implicit val patienceConfig = PatienceConfig(2 minutes, 2 seconds)
 
-    val port = 7000 + Random.nextInt(1000)
-    val restitoServer = new RestitoServer(port)
-    restitoServer.start()
-    val urlPrefix = "http://localhost:" + port
-
     val defaultConfig = ConfigLoader.defaultConfig
     val testConfig = defaultConfig.copy(
-      postcodeCheckerConfig = defaultConfig.postcodeCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      dinnerCheckerConfig = defaultConfig.dinnerCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      stackpotCheckerConfig = defaultConfig.stackpotCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      surveyDrawCheckerConfig = defaultConfig.surveyDrawCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      emojiCheckerConfig = defaultConfig.emojiCheckerConfig.copy(directWebAddressPrefix = urlPrefix),
-      s3Config = S3Config(ConfigFactory.load().getString("s3.usersfile"))
+      s3Config = defaultConfig.s3Config.copy(usersBucketName = ConfigFactory.load().getString("s3.usersBucketName"))
     )
     val testEmailClient = new StubEmailClient
     val users = new UsersFetcher(testConfig.s3Config).getUsers
-    val visionAPIClient = new VisionAPIClient(testConfig.visionApiConfig)
-    val screenshotAPIClient = new StubScreenshotApiClient(testConfig.screenshotApiConfig)
-    val postcodeChecker = new PostcodeChecker(testConfig.postcodeCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val dinnerChecker = new DinnerChecker(testConfig.dinnerCheckerConfig, users)
-    val stackpotChecker = new StackpotChecker(testConfig.stackpotCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val surveyDrawChecker = new SurveyDrawChecker(testConfig.surveyDrawCheckerConfig, users, visionAPIClient, screenshotAPIClient)
-    val emojiChecker = new EmojiChecker(testConfig.emojiCheckerConfig, users)
+
     val notificationDispatcher = new NotificationDispatcher(testEmailClient)
-    val testFixture = FixtureParam(postcodeChecker, dinnerChecker, stackpotChecker, emojiChecker, restitoServer, testEmailClient, testConfig, notificationDispatcher, users)
+    val testFixture = FixtureParam(testEmailClient, testConfig, notificationDispatcher, users)
 
-    try {
-      dinnerWebpageIsRetrieved(restitoServer.server, testConfig.dinnerCheckerConfig.uuid, "dinner/dinner-test-webpage.html")
-      surveyDrawWebpageIsRetrieved(restitoServer.server, testConfig.surveyDrawCheckerConfig.uuid, "survey-draw/survey-draw-test-webpage.html")
-      emojiWebpageIsRetrieved(restitoServer.server, testConfig.emojiCheckerConfig.uuid, "emoji/emoji-test-webpage.html")
+    val postcodeUserList = Map(User("dinnerwin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("nowin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("postcodeonlyplay@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),None,None) -> Some(false), User("allwin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))))) -> Some(true), User("postcodewin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true), User("stackpotdinnerwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("none@test.com",None,None,None) -> None, User("dinneronlyplay@test.com",None,Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),None) -> None, User("emojionlyplay@test.com",None,None,Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> None, User("surveydrawwin@test.com",Some(List(Postcode("HD58NA"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false))
+    val postCodeResults = Postcode("PR67LJ")
+    val dinnerUserList = Map(User("dinnerwin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true), User("nowin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("postcodeonlyplay@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),None,None) -> None, User("allwin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))))) -> Some(true), User("postcodewin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotdinnerwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true), User("none@test.com",None,None,None) -> None, User("dinneronlyplay@test.com",None,Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),None) -> Some(false), User("emojionlyplay@test.com",None,None,Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> None, User("surveydrawwin@test.com",Some(List(Postcode("HD58NA"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false))
+    val dinnerResults = List(DinnerUserName("winner4"), DinnerUserName("winner1"), DinnerUserName("winner5"), DinnerUserName("winner2"), DinnerUserName("winner6"), DinnerUserName("winner3"))
+    val stackPotUserList = Map(User("dinnerwin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("nowin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true), User("postcodeonlyplay@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),None,None) -> Some(false), User("allwin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))))) -> Some(false), User("postcodewin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotdinnerwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true), User("none@test.com",None,None,None) -> None, User("dinneronlyplay@test.com",None,Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),None) -> None, User("emojionlyplay@test.com",None,None,Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> None, User("surveydrawwin@test.com",Some(List(Postcode("HD58NA"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false))
+    val stackpotResults = List(Postcode("NR31TT"), Postcode("YO104DD"), Postcode("SO316LJ"), Postcode("CH35QQ"), Postcode("BT521SS"), Postcode("GY101SB"), Postcode("DN156BA"), Postcode("SL36QA"), Postcode("IG45NF"), Postcode("PL53HW"), Postcode("ST27EB"), Postcode("BS207JP"), Postcode("BT538JY"), Postcode("SG86HL"), Postcode("SE171NJ"), Postcode("PO121GN"), Postcode("OL146QG"), Postcode("PE28TR"), Postcode("SA18RD"), Postcode("WS20DL"), Postcode("GL32AP"))
+    val surveyDrawUserList = Map(User("dinnerwin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("nowin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("postcodeonlyplay@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),None,None) -> Some(false), User("allwin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))))) -> Some(false), User("postcodewin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotdinnerwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("none@test.com",None,None,None) -> None, User("dinneronlyplay@test.com",None,Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),None) -> None, User("emojionlyplay@test.com",None,None,Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> None, User("surveydrawwin@test.com",Some(List(Postcode("HD58NA"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(true))
+    val surveyDrawResults = Postcode("HD58NA")
+    val emojiUserList = Map(User("dinnerwin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("nowin@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("postcodeonlyplay@test.com",Some(List(Postcode("AA67LJ"), Postcode("EF456GH"))),None,None) -> None, User("allwin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))))) -> Some(true), User("postcodewin@test.com",Some(List(Postcode("PR67LJ"), Postcode("EF456GH"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("stackpotdinnerwin@test.com",Some(List(Postcode("NR31TT"))),Some(List(DinnerUserName("winner1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("none@test.com",None,None,None) -> None, User("dinneronlyplay@test.com",None,Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),None) -> None, User("emojionlyplay@test.com",None,None,Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false), User("surveydrawwin@test.com",Some(List(Postcode("HD58NA"))),Some(List(DinnerUserName("testuser1"), DinnerUserName("testuser2"))),Some(List(Set(Emoji("1f917"), Emoji("1f635"), Emoji("1f427"), Emoji("1f431"), Emoji("1f632"))))) -> Some(false))
+    val emojiResults = Set(Emoji("1f914"), Emoji("1f60d"), Emoji("1f609"), Emoji("1f60a"), Emoji("1f911"))
 
-      (for {
-        postCodeResults <- postcodeChecker.run
-        dinnerResults <- dinnerChecker.run
-        stackpotResults <- stackpotChecker.run
-        surveyDrawResults <- surveyDrawChecker.run
-        emojiResults <- emojiChecker.run
-        _ <- notificationDispatcher.dispatchNotifications(users, postCodeResults._1, postCodeResults._2, dinnerResults._1, dinnerResults._2, stackpotResults._1, stackpotResults._2, surveyDrawResults._1, surveyDrawResults._2, emojiResults._1, emojiResults._2)
+    (for {
+        _ <- notificationDispatcher.dispatchNotifications(users,
+          Some(ResultsBundle(postcodeUserList, postCodeResults)),
+          Some(ResultsBundle(dinnerUserList, dinnerResults)),
+          Some(ResultsBundle(stackPotUserList, stackpotResults)),
+          Some(ResultsBundle(surveyDrawUserList, surveyDrawResults)),
+          Some(ResultsBundle(emojiUserList, emojiResults)))
       } yield ()).futureValue
 
       withFixture(test.toNoArgTest(testFixture))
     }
-    finally {
-      restitoServer.stop()
-    }
-  }
 
   test("Correct Number of emails are sent out") { f =>
 
@@ -97,20 +68,6 @@ class NotificationDispatcherTest extends fixture.FunSuite with Matchers with Sca
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include("1f632")
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include("1f431")
     f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include("1f427")
-  }
-
-  test("Actual winning results included in email") { f =>
-    winnerUsersFromWebpage.foreach(winningUser => {
-      f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningUser.value.toLowerCase)
-    })
-    winningStackpotPostcodes.foreach(winningPostcode => {
-      f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningPostcode.value)
-    })
-    winningEmojis.foreach(winningEmoji => {
-      f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningEmoji.id)
-    })
-
-    f.testEmailClient.emailsSent.filter(_.to.contains("nowin@test.com")).head.body should include(winningPostcodeFromWebpage.value)
   }
 
   test("Test scenario where there is no win") { f =>

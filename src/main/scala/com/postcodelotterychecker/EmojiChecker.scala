@@ -1,13 +1,54 @@
 package com.postcodelotterychecker
 
-import com.typesafe.scalalogging.StrictLogging
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import net.ruippeixotog.scalascraper.dsl.DSL._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-class EmojiChecker(emojiCheckerConfig: EmojiCheckerConfig, users: List[User])(implicit executionContext: ExecutionContext) extends Checker[Set[Emoji]] with StrictLogging {
+object EmojiCheckerHandlerManual extends App {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val emojiChecker = new EmojiChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+  val result = for {
+    emojiResults <- emojiChecker.run
+  } yield resultsToS3Uploader.uploadEmojiCheckerResults(emojiResults._1, emojiResults._2, "1234567")
+
+  Await.result(result, lambdaWaitTime)
+
+}
+
+
+class EmojiCheckerHandler extends RequestHandler[Request, Response] {
+
+  val config: Config = ConfigLoader.defaultConfig
+  val users = new UsersFetcher(config.s3Config).getUsers
+  val emojiChecker = new EmojiChecker(config, users)
+  val resultsToS3Uploader = new ResultsToS3Uploader(config.s3Config)
+  val lambdaWaitTime = 4 minutes
+
+
+  override def handleRequest(input: Request, context: Context): Response = {
+
+    val result = for {
+      emojiResults <- emojiChecker.run
+    } yield resultsToS3Uploader.uploadEmojiCheckerResults(emojiResults._1, emojiResults._2, input.uuid)
+
+    Await.result(result, lambdaWaitTime)
+    Response(true)
+  }
+}
+
+class EmojiChecker(config: Config, users: List[User]) extends Checker[Set[Emoji]] {
+
+  val emojiCheckerConfig: EmojiCheckerConfig = config.emojiCheckerConfig
 
   override def run: Future[(UserResults, Set[Emoji])] = startWithDirectWebAddress
 
@@ -31,7 +72,7 @@ class EmojiChecker(emojiCheckerConfig: EmojiCheckerConfig, users: List[User])(im
     emojiUrls.map(url => Emoji(regex.findAllMatchIn(url).next().group(1).toLowerCase))
     }
 
-  private def processResult(winningEmojis: Set[Emoji]): Map[User, Option[Boolean]] = {
+  private def processResult(winningEmojis: Set[Emoji]): UserResults = {
     users.map(user => {
       user -> user.emojiSetsWatching.map(watchingSets => {
         watchingSets.contains(winningEmojis)

@@ -29,7 +29,7 @@ class QuidcoHitterTest extends fixture.FunSuite with Matchers with ScalaFutures 
     val testConfig = defaultConfig.copy(
       quidcoHitterConfig = defaultConfig.quidcoHitterConfig.copy(directWebAddressPrefix = urlPrefix)
     )
-    val quidcoHitter = new QuidcoHitter(testConfig.quidcoHitterConfig)
+    val quidcoHitter = new QuidcoHitter(testConfig)
 
     val testFixture = FixtureParam(quidcoHitter, restitoServer,  testConfig.quidcoHitterConfig)
 
