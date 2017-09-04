@@ -2,7 +2,7 @@ package com.postcodelotterychecker
 
 import java.util.UUID
 
-import com.postcodelotterychecker.NotificationDispatcher.ResultsBundle
+import com.postcodelotterychecker.NotificationDispatcher.{ResultsBundle, UserResults}
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,7 +18,7 @@ object Main extends App with StrictLogging {
 
   def secondsBetweenRetries = 30
 
-//  startMaster
+//    startMaster
 
   def startMaster = {
 
@@ -51,11 +51,14 @@ object Main extends App with StrictLogging {
     def retryHelper(attemptNumber: Int): Unit = {
       val startTime = System.currentTimeMillis()
       logger.info(s"Main Attempt $attemptNumber of $totalNumberAttempts")
-      if (attemptNumber > totalNumberAttempts) throw new RuntimeException(s"Retried $totalNumberAttempts times. No more retries")
+      if (attemptNumber > totalNumberAttempts) {
+        logger.info("Reached last attempt. Sending anyway.")
+        checkAndEmail(lastAttempt = true)
+      }
       else {
-        checkAndEmail match {
+        checkAndEmail() match {
           case Some(fn) => Await.result({
-              fn
+            fn
               .map(_ => logger.info("successfully completed"))
               .recoverWith { case _ =>
                 logger.info(s"Main execution failed on attempt $attemptNumber. Recovering.")
@@ -67,6 +70,7 @@ object Main extends App with StrictLogging {
             sleepAndRetry
         }
       }
+
       def sleepAndRetry = {
         val sleepTime = ((secondsBetweenRetries * 1000) + startTime) - System.currentTimeMillis()
         logger.info(s"Sleeping for $sleepTime milliseconds")
@@ -76,36 +80,44 @@ object Main extends App with StrictLogging {
     }
 
 
-    def checkAndEmail: Option[Future[Unit]] = for {
-      postcodeUserResults <- resultsFromS3Assembler.getUserResults("postcode-results", sessionUUid)
-      _ = logger.info("got postcode user results")
-      postcodeWinningResult <- resultsFromS3Assembler.getPostcodeWinningResult(sessionUUid)
-      _ = logger.info("got postcode winning result")
-      stackpotUserResults <- resultsFromS3Assembler.getUserResults("stackpot-results", sessionUUid)
-      _ = logger.info("got stackpot user results")
-      stackpotWinningResult <- resultsFromS3Assembler.getStackpotWinningResult(sessionUUid)
-      _ = logger.info("got stackpot winning result")
-      surveyDrawUserResults <- resultsFromS3Assembler.getUserResults("survey-draw-results", sessionUUid)
-      _ = logger.info("got survey draw user results")
-      surveyDrawWinningResult <- resultsFromS3Assembler.getSurveyDrawWinningResult(sessionUUid)
-      _ = logger.info("got survey draw winning result")
-      dinnerUserResults <- resultsFromS3Assembler.getUserResults("dinner-results", sessionUUid)
-      _ = logger.info("got dinner user results")
-      dinnerWinningResult <- resultsFromS3Assembler.getDinnerWinningResult(sessionUUid)
-      _ = logger.info("got dinner winning result")
-      emojiUserResults <- resultsFromS3Assembler.getUserResults("emoji-results", sessionUUid)
-      _ = logger.info("got emoji user results")
-      emojiWinningResult <- resultsFromS3Assembler.getEmojiWinningResult(sessionUUid)
-      _ = logger.info("got emoji winning result")
-    } yield {
-      notificationDispatcher.dispatchNotifications(
-        users,
-        Some(ResultsBundle(postcodeUserResults, postcodeWinningResult)),
-        Some(ResultsBundle(dinnerUserResults, dinnerWinningResult)),
-        Some(ResultsBundle(stackpotUserResults, stackpotWinningResult)),
-        Some(ResultsBundle(surveyDrawUserResults, surveyDrawWinningResult)),
-        Some(ResultsBundle(emojiUserResults, emojiWinningResult))
-      )
+    def checkAndEmail(lastAttempt: Boolean = false): Option[Future[Unit]] = {
+      val postcodeUserResults = resultsFromS3Assembler.getUserResults("postcode-results", sessionUUid)
+      val postcodeWinningResult = resultsFromS3Assembler.getPostcodeWinningResult(sessionUUid)
+      val stackpotUserResults = resultsFromS3Assembler.getUserResults("stackpot-results", sessionUUid)
+      val stackpotWinningResult = resultsFromS3Assembler.getStackpotWinningResult(sessionUUid)
+      val surveyDrawUserResults = resultsFromS3Assembler.getUserResults("survey-draw-results", sessionUUid)
+      val surveyDrawWinningResult = resultsFromS3Assembler.getSurveyDrawWinningResult(sessionUUid)
+      val dinnerUserResults = resultsFromS3Assembler.getUserResults("dinner-results", sessionUUid)
+      val dinnerWinningResult = resultsFromS3Assembler.getDinnerWinningResult(sessionUUid)
+      val emojiUserResults = resultsFromS3Assembler.getUserResults("emoji-results", sessionUUid)
+      val emojiWinningResult = resultsFromS3Assembler.getEmojiWinningResult(sessionUUid)
+
+
+      def sendToNotificationDispatcher: Future[Unit] = {
+
+        def resultsBundleOrNone[A](userResults: Option[UserResults], winningResult: Option[A]): Option[ResultsBundle[A]] = {
+          (userResults, winningResult) match {
+            case (Some(userRes), Some(winningRes)) => Some(ResultsBundle(userRes, winningRes))
+            case _ => None
+          }
+        }
+        notificationDispatcher.dispatchNotifications(
+          users,
+          resultsBundleOrNone(postcodeUserResults, postcodeWinningResult),
+          resultsBundleOrNone(dinnerUserResults, dinnerWinningResult),
+          resultsBundleOrNone(stackpotUserResults, stackpotWinningResult),
+          resultsBundleOrNone(surveyDrawUserResults, surveyDrawWinningResult),
+          resultsBundleOrNone(emojiUserResults, emojiWinningResult)
+        )
+      }
+
+      if (lastAttempt) Some(sendToNotificationDispatcher)
+      else {
+        if (List(postcodeUserResults, postcodeWinningResult, stackpotUserResults,
+          stackpotWinningResult, surveyDrawUserResults, surveyDrawWinningResult,
+          dinnerUserResults, dinnerWinningResult, emojiUserResults, emojiWinningResult).exists(_.isEmpty)) None
+        else Some(sendToNotificationDispatcher)
+      }
     }
   }
 }
