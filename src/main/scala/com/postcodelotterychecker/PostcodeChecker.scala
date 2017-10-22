@@ -64,7 +64,11 @@ class PostcodeChecker(config: Config, users: List[User]) extends Checker[Postcod
     Utils.retry(totalNumberOfAttempts = 3, secondsBetweenAttempts = 2) {
       val page = htmlUnitWebClient.getPage(webAddress)
 //            logger.debug(page.asXml().mkString)
-      val text = page.getElementById("result").getElementsByTagName("p").get(0).getTextContent
+      val text = {
+        val res = page.getElementById("result").getElementsByTagName("p").get(0)
+        res.removeChild("span", 0)
+        res.getTextContent
+      }
       logger.info(s"text retrieved $text")
       val trimmedText = text.trim().split("\n").map(_.trim).apply(0)
       logger.info(s"trimmed text retrieved $trimmedText")

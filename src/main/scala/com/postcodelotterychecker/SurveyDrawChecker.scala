@@ -72,12 +72,20 @@ class SurveyDrawChecker(config: Config, users: List[User]) extends Checker[Postc
 //      logger.debug(page.asXml().mkString)
 
       val text = {
-        val t = page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+        val t = {
+          val res = page.getElementById("result-header").getElementsByTagName("p").get(0)
+          res.removeChild("span", 0)
+          res.getTextContent
+        }
         if (t.contains("Looking for a")) {
           logger.info("text contained 'Looking for a', waiting longer...")
           Thread.sleep(10000)
           htmlUnitWebClient.waitForBackgroundJS(page.getWebClient)
-          page.getElementById("result-header").getElementsByTagName("p").get(0).getTextContent
+
+          val res = page.getElementById("result-header").getElementsByTagName("p").get(0)
+          res.removeChild("span", 0)
+          res.getTextContent
+
         } else t
       }
       logger.info(s"text retrieved $text")
