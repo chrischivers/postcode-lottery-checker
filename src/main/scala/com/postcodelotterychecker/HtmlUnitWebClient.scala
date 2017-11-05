@@ -26,10 +26,10 @@ class HtmlUnitWebClient extends StrictLogging {
 
   def getPage(webAddress: String): HtmlPage = {
     val webClient = getNewWebClient
-    logger.info(s"Html unit web client getting page from web address $webAddress")
+    logger.debug(s"Html unit web client getting page from web address $webAddress")
     val currentPage = webClient.getPage[HtmlPage](webAddress)
     waitForBackgroundJS(webClient)
-    logger.info("refreshing page...")
+    logger.debug("refreshing page...")
     val refreshedPage = currentPage.refresh()
     waitForBackgroundJS(webClient)
     refreshedPage.asInstanceOf[HtmlPage]
@@ -40,7 +40,7 @@ class HtmlUnitWebClient extends StrictLogging {
   }
 }
 
-class InterceptWebConnection(webClient: WebClient) extends FalsifyingWebConnection(webClient) {
+private class InterceptWebConnection(webClient: WebClient) extends FalsifyingWebConnection(webClient) {
 
   override def getResponse(request: WebRequest): WebResponse = {
     super.getResponse(request)

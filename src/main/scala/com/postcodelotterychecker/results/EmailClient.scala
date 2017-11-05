@@ -1,9 +1,10 @@
-package com.postcodelotterychecker
+package com.postcodelotterychecker.results
 
 import java.util.Properties
 import javax.mail.internet.{InternetAddress, MimeMessage}
 import javax.mail.{Session, _}
 
+import com.postcodelotterychecker.EmailerConfig
 import com.postcodelotterychecker.utils.Utils
 import com.typesafe.scalalogging.StrictLogging
 
@@ -42,6 +43,4 @@ class DefaultEmailClient(emailerConfig: EmailerConfig) extends EmailClient with 
       Transport.send(message)
     }
   }
-
-
 }
