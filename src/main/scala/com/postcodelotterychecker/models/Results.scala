@@ -1,5 +1,8 @@
 package com.postcodelotterychecker.models
 
+import com.postcodelotterychecker.models.Competitions.Competition
+import com.postcodelotterychecker.models.ResultTypes.{PostcodeResultType, ResultType}
+
 object Results {
 
   case class WinningResults(
@@ -9,14 +12,15 @@ object Results {
                              stackpotResult: Option[List[Postcode]],
                              emojiResult: Option[Set[Emoji]])
 
-  case class SubscriberResult[A](won: Option[Boolean], watching: A, actualWinning: Option[A])
+  case class SubscriberResult[R, W](resultType: ResultType[R, W], watching: W, actualWinning: Option[R], won: Option[Boolean])
 
   case class SubscriberResults(
-                                postcodeResult: Option[SubscriberResult[List[Postcode]]],
-                                dinnerResult: Option[SubscriberResult[List[DinnerUserName]]],
-                                surveyDrawResult: Option[SubscriberResult[List[Postcode]]],
-                                stackpotResult: Option[SubscriberResult[List[Postcode]]],
-                                emojiResult: Option[SubscriberResult[List[Set[Emoji]]]]
+                                postcodeResult: Option[SubscriberResult[Postcode, List[Postcode]]],
+                                dinnerResult: Option[SubscriberResult[List[DinnerUserName], List[DinnerUserName]]],
+                                surveyDrawResult: Option[SubscriberResult[List[Postcode], List[Postcode]]],
+                                stackpotResult: Option[SubscriberResult[List[Postcode], List[Postcode]]],
+                                emojiResult: Option[SubscriberResult[Set[Emoji], List[Set[Emoji]]]]
                               )
+
 
 }

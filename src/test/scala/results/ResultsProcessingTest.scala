@@ -1,9 +1,11 @@
+package results
+
 import java.util.UUID
 
 import cats.effect.IO
 import com.postcodelotterychecker._
 import com.postcodelotterychecker.caching.RedisResultCache
-import com.postcodelotterychecker.models.CheckerType.CheckerType
+import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, WinningResults}
 import com.postcodelotterychecker.models._
 import com.postcodelotterychecker.results.ResultsProcessor
@@ -19,7 +21,7 @@ class ResultsProcessingTest extends FlatSpec with ResultsProcessingFixtures with
 
   override protected def beforeAll(): Unit = {
     new RedisResultCache[Postcode] {
-      override val checkerType = CheckerType.PostcodeType
+      override val resultType = ResultTypes.PostcodeResultType
       override val config = ConfigLoader.defaultConfig.redisConfig.copy(dbIndex = 1)
     }.flushDB()
   }
@@ -64,15 +66,15 @@ class ResultsProcessingTest extends FlatSpec with ResultsProcessingFixtures with
       val subscriberResults = mapSubscribersToResults(List(scenario.subscriber), agregatedResults)
       subscriberResults should have size 1
       subscriberResults(scenario.subscriber).postcodeResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult[List[Postcode]](scenario.won.getOrElse("POSTCODE", Some(false)), postcodesWatching, agregatedResults.postcodeResult.map(List(_))))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(PostcodeResultType, postcodesWatching, agregatedResults.postcodeResult, scenario.won.getOrElse("POSTCODE", Some(false))))
       subscriberResults(scenario.subscriber).dinnerResult shouldBe
-        scenario.subscriber.dinnerUsersWatching.map(dinnerUsersWatching => SubscriberResult[List[DinnerUserName]](scenario.won.getOrElse("DINNER", Some(false)), dinnerUsersWatching, agregatedResults.dinnerResult))
+        scenario.subscriber.dinnerUsersWatching.map(dinnerUsersWatching => SubscriberResult(DinnerResultType, dinnerUsersWatching, agregatedResults.dinnerResult, scenario.won.getOrElse("DINNER", Some(false))))
       subscriberResults(scenario.subscriber).surveyDrawResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult[List[Postcode]](scenario.won.getOrElse("SURVEYDRAW", Some(false)), postcodesWatching, agregatedResults.surveyDrawResult))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(SurveyDrawResultType, postcodesWatching, agregatedResults.surveyDrawResult, scenario.won.getOrElse("SURVEYDRAW", Some(false))))
       subscriberResults(scenario.subscriber).stackpotResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult[List[Postcode]](scenario.won.getOrElse("STACKPOT", Some(false)), postcodesWatching, agregatedResults.stackpotResult))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(StackpotResultType, postcodesWatching, agregatedResults.stackpotResult, scenario.won.getOrElse("STACKPOT", Some(false))))
       subscriberResults(scenario.subscriber).emojiResult shouldBe
-        scenario.subscriber.emojiSetsWatching.map(emojiSetsWatching => SubscriberResult[List[Set[Emoji]]](scenario.won.getOrElse("EMOJI", Some(false)), emojiSetsWatching, agregatedResults.emojiResult.map(List(_))))
+        scenario.subscriber.emojiSetsWatching.map(emojiSetsWatching => SubscriberResult(EmojiResultType, emojiSetsWatching, agregatedResults.emojiResult, scenario.won.getOrElse("EMOJI", Some(false))))
     }
   }
 
@@ -97,23 +99,23 @@ class ResultsProcessingTest extends FlatSpec with ResultsProcessingFixtures with
 
 class TestCaches(redisConfig: RedisConfig) {
   val postcodeResultCache = new RedisResultCache[Postcode] {
-    override val checkerType = CheckerType.PostcodeType
+    override val resultType = ResultTypes.PostcodeResultType
     override val config = redisConfig
   }
   val dinnerResultCache = new RedisResultCache[List[DinnerUserName]] {
-    override val checkerType = CheckerType.DinnerType
+    override val resultType = ResultTypes.DinnerResultType
     override val config = redisConfig
   }
   val stackpotResultCache = new RedisResultCache[List[Postcode]] {
-    override val checkerType = CheckerType.StackpotType
+    override val resultType = ResultTypes.StackpotResultType
     override val config = redisConfig
   }
   val surveyDrawResultCache = new RedisResultCache[List[Postcode]] {
-    override val checkerType = CheckerType.SurveyDrawType
+    override val resultType = ResultTypes.SurveyDrawResultType
     override val config = redisConfig
   }
   val emojiResultCache = new RedisResultCache[Set[Emoji]] {
-    override val checkerType = CheckerType.EmojiType
+    override val resultType = ResultTypes.EmojiResultType
     override val config = redisConfig
   }
 }
