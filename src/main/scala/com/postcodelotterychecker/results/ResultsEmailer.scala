@@ -1,5 +1,6 @@
 package com.postcodelotterychecker.results
 
+import cats.effect.IO
 import com.postcodelotterychecker.models.Competitions.Competition
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
 import com.postcodelotterychecker.models.Subscriber
@@ -9,28 +10,30 @@ trait ResultsEmailer {
   val resultsData: Map[Subscriber, SubscriberResults]
   val emailClient: EmailClient
 
-  resultsData.foreach { case (subscriber, subscriberResults) =>
-    val competitionsWon: List[Competition] = wonAnyCompetitions(subscriberResults)
-    val subject = if (competitionsWon.isEmpty) "Sorry you have not won anything today" else s"Congratulations you have won ${competitionsWon.mkString(", ")}"
-    val emailBody =
-      s"""
-         |
-         |TODAYS RESULTS FOR ${subscriber.email}
-         |
-         |$subject
-         |
-         |${subscriberResults.postcodeResult.fold("")(pr => generateResultsBlock(pr))}
-         |${subscriberResults.stackpotResult.fold("")(spr => generateResultsBlock(spr))}
-         |${subscriberResults.surveyDrawResult.fold("")(sdr => generateResultsBlock(sdr))}
-         |${subscriberResults.dinnerResult.fold("")(dr => generateResultsBlock(dr))}
-         |${subscriberResults.emojiResult.fold("")(er => generateResultsBlock(er))}
-         |
+  def sendEmails(): IO[Unit] = IO {
+
+    resultsData.foreach { case (subscriber, subscriberResults) =>
+      val competitionsWon: List[Competition] = wonAnyCompetitions(subscriberResults)
+      val subject = if (competitionsWon.isEmpty) "Sorry you have not won today" else s"Congratulations you have won ${competitionsWon.map(_.name).mkString(", ")}"
+      val emailBody =
+        s"""
+           |
+           |TODAYS RESULTS FOR ${subscriber.email}
+           |
+           |$subject
+           |
+           |${subscriberResults.postcodeResult.fold("")(pr => generateResultsBlock(pr))}
+           |${subscriberResults.stackpotResult.fold("")(spr => generateResultsBlock(spr))}
+           |${subscriberResults.surveyDrawResult.fold("")(sdr => generateResultsBlock(sdr))}
+           |${subscriberResults.dinnerResult.fold("")(dr => generateResultsBlock(dr))}
+           |${subscriberResults.emojiResult.fold("")(er => generateResultsBlock(er))}
+           |
      """.stripMargin
 
-    val email = Email(subject, emailBody, subscriber.email)
+      val email = Email(subject, emailBody, subscriber.email)
 
-    emailClient.sendEmail(email)
-
+      emailClient.sendEmail(email)
+    }
   }
 
 
@@ -51,7 +54,8 @@ trait ResultsEmailer {
 
   private def wonAnyCompetitions(subscriberResults: SubscriberResults): List[Competition] = {
 
-    def hasSubscriberResultWon[R, W](subscriberResult: Option[SubscriberResult[R, W]]) = {
+    def hasSubscriberResultWon[R, W](subscriberResult: Option[SubscriberResult[R, W]]): Option[Competition] = {
+      println(subscriberResult)
       for {
         res <- subscriberResult
         won <- res.won

@@ -5,6 +5,7 @@ import java.util.UUID
 import cats.effect.IO
 import com.postcodelotterychecker._
 import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, WinningResults}
 import com.postcodelotterychecker.models._
@@ -14,7 +15,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import scala.util.Random
 
 
-class ResultsProcessingTest extends FlatSpec with ResultsProcessingFixtures with Matchers with BeforeAndAfterAll {
+class ResultsProcessingTest extends FlatSpec with SubscriberScenarios with Matchers with BeforeAndAfterAll {
 
   val redisTestConfig = ConfigLoader.defaultConfig.redisConfig.copy(dbIndex = 1)
   val testcaches = new TestCaches(redisTestConfig)
@@ -56,25 +57,25 @@ class ResultsProcessingTest extends FlatSpec with ResultsProcessingFixtures with
       writeWinningDataToCache(
         uuid,
         testcaches,
-        winningPostcodeOpt = if (scenario.resultsNotReceivedFor.contains("POSTCODE")) None else Some(defaultWinningPostcode),
-        winningDinnerUsersOpt = if (scenario.resultsNotReceivedFor.contains("DINNER")) None else Some(defaultWinningDinnerUsers),
-        winningSurveyDrawPostcodesOpt = if (scenario.resultsNotReceivedFor.contains("SURVEYDRAW")) None else Some(defaultWinningSurveyDrawPostcodes),
-        winningStackpotPostcodesOpt = if (scenario.resultsNotReceivedFor.contains("STACKPOT")) None else Some(defaultWinningStackpotPostcodes),
-        winningEmojiSetOpt = if (scenario.resultsNotReceivedFor.contains("EMOJI")) None else Some(defaultWinningEmojiSet))
+        winningPostcodeOpt = if (scenario.resultsNotReceivedFor.contains(PostcodeCompetition)) None else Some(defaultWinningPostcode),
+        winningDinnerUsersOpt = if (scenario.resultsNotReceivedFor.contains(DinnerCompetition)) None else Some(defaultWinningDinnerUsers),
+        winningSurveyDrawPostcodesOpt = if (scenario.resultsNotReceivedFor.contains(SurveyDrawCompetition)) None else Some(defaultWinningSurveyDrawPostcodes),
+        winningStackpotPostcodesOpt = if (scenario.resultsNotReceivedFor.contains(StackpotCompetition)) None else Some(defaultWinningStackpotPostcodes),
+        winningEmojiSetOpt = if (scenario.resultsNotReceivedFor.contains(EmojiCompetition)) None else Some(defaultWinningEmojiSet))
       val agregatedResults = aggregateResults(uuid).unsafeRunSync()
 
       val subscriberResults = mapSubscribersToResults(List(scenario.subscriber), agregatedResults)
       subscriberResults should have size 1
       subscriberResults(scenario.subscriber).postcodeResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(PostcodeResultType, postcodesWatching, agregatedResults.postcodeResult, scenario.won.getOrElse("POSTCODE", Some(false))))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(PostcodeResultType, postcodesWatching, agregatedResults.postcodeResult, scenario.won.getOrElse(PostcodeCompetition, Some(false))))
       subscriberResults(scenario.subscriber).dinnerResult shouldBe
-        scenario.subscriber.dinnerUsersWatching.map(dinnerUsersWatching => SubscriberResult(DinnerResultType, dinnerUsersWatching, agregatedResults.dinnerResult, scenario.won.getOrElse("DINNER", Some(false))))
+        scenario.subscriber.dinnerUsersWatching.map(dinnerUsersWatching => SubscriberResult(DinnerResultType, dinnerUsersWatching, agregatedResults.dinnerResult, scenario.won.getOrElse(DinnerCompetition, Some(false))))
       subscriberResults(scenario.subscriber).surveyDrawResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(SurveyDrawResultType, postcodesWatching, agregatedResults.surveyDrawResult, scenario.won.getOrElse("SURVEYDRAW", Some(false))))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(SurveyDrawResultType, postcodesWatching, agregatedResults.surveyDrawResult, scenario.won.getOrElse(SurveyDrawCompetition, Some(false))))
       subscriberResults(scenario.subscriber).stackpotResult shouldBe
-        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(StackpotResultType, postcodesWatching, agregatedResults.stackpotResult, scenario.won.getOrElse("STACKPOT", Some(false))))
+        scenario.subscriber.postcodesWatching.map(postcodesWatching => SubscriberResult(StackpotResultType, postcodesWatching, agregatedResults.stackpotResult, scenario.won.getOrElse(StackpotCompetition, Some(false))))
       subscriberResults(scenario.subscriber).emojiResult shouldBe
-        scenario.subscriber.emojiSetsWatching.map(emojiSetsWatching => SubscriberResult(EmojiResultType, emojiSetsWatching, agregatedResults.emojiResult, scenario.won.getOrElse("EMOJI", Some(false))))
+        scenario.subscriber.emojiSetsWatching.map(emojiSetsWatching => SubscriberResult(EmojiResultType, emojiSetsWatching, agregatedResults.emojiResult, scenario.won.getOrElse(EmojiCompetition, Some(false))))
     }
   }
 
@@ -120,231 +121,3 @@ class TestCaches(redisConfig: RedisConfig) {
   }
 }
 
-trait ResultsProcessingFixtures {
-
-  case class Scenario(description: String,
-                      subscriber: Subscriber,
-                      won: Map[String, Option[Boolean]] = Map.empty,
-                      resultsNotReceivedFor: List[String] = List.empty)
-
-  val defaultWinningPostcode = Postcode("TR18HJ")
-  val defaultWinningDinnerUsers = List(DinnerUserName("user1"), DinnerUserName("user2"))
-  val defaultWinningStackpotPostcodes = List(Postcode("DEF456"), Postcode("EFG567"), Postcode("FGH678"))
-  val defaultWinningSurveyDrawPostcodes = List(Postcode("ABC123"), Postcode("BCD234"), Postcode("CDE345"))
-  val defaultWinningEmojiSet = Set(Emoji("aaaaa"), Emoji("bbbbb"), Emoji("ccccc"), Emoji("ddddd"), Emoji("eeeee"))
-
-  val defaultNonWinningSubscriber = Subscriber(
-    email = "default-subscriber@email.com",
-    postcodesWatching = Some(List(Postcode("XYZ123"))),
-    dinnerUsersWatching = Some(List(DinnerUserName("user3"))),
-    emojiSetsWatching = Some(List(Set(Emoji("aaaaa"), Emoji("wwwww"), Emoji("xxxxx"), Emoji("yyyyy"), Emoji("zzzzz"))))
-  )
-
-  val postcodeSubscriberScenarios: List[Scenario] = {
-    val nonWinningSubscriber = Scenario(
-      "Postcode Scenario - Non Winning Subscriber",
-      defaultNonWinningSubscriber)
-
-    val subscriberWinningPostcodeSingleWatching = Scenario(
-      "Postcode Scenario - Winning Subscriber, single postcode watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(List(defaultWinningPostcode))),
-      won = Map("POSTCODE" -> Some(true))
-    )
-
-    val subscriberWinningPostcodeMultipleWatching = Scenario(
-      "Postcode Scenario - Winning Subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = defaultNonWinningSubscriber.postcodesWatching.map(pc => pc :+ defaultWinningPostcode)),
-      won = Map("POSTCODE" -> Some(true))
-    )
-
-    val subscriberNotSubscribedToPostcodes = Scenario(
-      "Postcode Scenario - Subscriber not subscribed to postcodes",
-      defaultNonWinningSubscriber.copy(postcodesWatching = None)
-    )
-
-    val noResultsReceivedForPostcodes = Scenario(
-      "Postcode Scenario - No results received",
-      defaultNonWinningSubscriber,
-      resultsNotReceivedFor = List("POSTCODE"),
-      won = Map("POSTCODE" -> None)
-    )
-
-    List(nonWinningSubscriber, subscriberWinningPostcodeSingleWatching, subscriberWinningPostcodeMultipleWatching, subscriberNotSubscribedToPostcodes, noResultsReceivedForPostcodes)
-  }
-
-  val dinnerSubscriberScenarios: List[Scenario] = {
-    val nonWinningSubscriber = Scenario(
-      "Dinner Scenario - Non Winning Subscriber",
-      defaultNonWinningSubscriber)
-
-    val subscriberWinningDinnerSingleWatching = Scenario(
-      "Dinner Scenario - Winning Subscriber, single dinner user watching",
-      defaultNonWinningSubscriber
-        .copy(dinnerUsersWatching = Some(List(Random.shuffle(defaultWinningDinnerUsers).head))),
-      won = Map("DINNER" -> Some(true)))
-
-    val subscriberWinningDinnerMultipleWatching = Scenario(
-      "Dinner Scenario - Winning Subscriber, multiple dinner users watching",
-      defaultNonWinningSubscriber
-        .copy(dinnerUsersWatching = defaultNonWinningSubscriber.dinnerUsersWatching.map(din => din :+ Random.shuffle(defaultWinningDinnerUsers).head)),
-      won = Map("DINNER" -> Some(true)))
-
-    val subscriberMultipleWinningDinnerMultipleWatching = Scenario(
-      "Dinner Scenario - Multiple winning subscriber, multiple dinner users watching",
-      defaultNonWinningSubscriber
-        .copy(dinnerUsersWatching = Some(defaultWinningDinnerUsers)),
-      won = Map("DINNER" -> Some(true)))
-
-    val subscriberNotSubscribedToDinners = Scenario(
-      "Dinner Scenario - Subscriber not subscribed to dinners",
-      defaultNonWinningSubscriber.copy(dinnerUsersWatching = None)
-    )
-
-    val noResultsReceivedForDinner = Scenario(
-      "Dinner Scenario - No results received",
-      defaultNonWinningSubscriber,
-      resultsNotReceivedFor = List("DINNER"),
-      won = Map("DINNER" -> None)
-    )
-
-    List(nonWinningSubscriber, subscriberWinningDinnerSingleWatching, subscriberWinningDinnerMultipleWatching, subscriberMultipleWinningDinnerMultipleWatching, subscriberNotSubscribedToDinners, noResultsReceivedForDinner)
-  }
-
-  val surveyDrawSubscriberScenarios: List[Scenario] = {
-    val nonWinningSubscriber = Scenario(
-      "Survey Draw Scenario - Non Winning Subscriber",
-      defaultNonWinningSubscriber)
-
-    val subscriberWinningSurveyDrawSingleWatching = Scenario(
-      "Survey Draw Scenario - Winning Subscriber, single postcode watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(List(Random.shuffle(defaultWinningSurveyDrawPostcodes).head))),
-      won = Map("SURVEYDRAW" -> Some(true)))
-
-    val subscriberWinningSurveyDrawMultipleWatching = Scenario(
-      "Survey Draw Scenario - Winning Subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = defaultNonWinningSubscriber.postcodesWatching.map(pc => pc :+ Random.shuffle(defaultWinningSurveyDrawPostcodes).head)),
-      won = Map("SURVEYDRAW" -> Some(true)))
-
-    val subscriberMultipleWinningSurveyDrawMultipleWatching = Scenario(
-      "Survey Draw Scenario - Multiple winning subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(defaultWinningSurveyDrawPostcodes)),
-      won = Map("SURVEYDRAW" -> Some(true)))
-
-    val subscriberNotSubscribedToPostcodes = Scenario(
-      "Survey Draw Scenario - Subscriber not subscribed to postcodes",
-      defaultNonWinningSubscriber.copy(postcodesWatching = None)
-    )
-
-    val noResultsReceivedForSurveyDraw = Scenario(
-      "Survey Draw Scenario - No results received",
-      defaultNonWinningSubscriber,
-      resultsNotReceivedFor = List("SURVEYDRAW"),
-      won = Map("SURVEYDRAW" -> None)
-    )
-
-    List(nonWinningSubscriber, subscriberWinningSurveyDrawSingleWatching, subscriberWinningSurveyDrawMultipleWatching, subscriberMultipleWinningSurveyDrawMultipleWatching, subscriberNotSubscribedToPostcodes, noResultsReceivedForSurveyDraw)
-  }
-
-  val stackpotSubscriberScenarios: List[Scenario] = {
-    val nonWinningSubscriber = Scenario(
-      "Stackpot Scenario - Non Winning Subscriber",
-      defaultNonWinningSubscriber)
-
-    val subscriberWinningStackpotSingleWatching = Scenario(
-      "Stackpot Scenario - Winning Subscriber, single postcode watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(List(Random.shuffle(defaultWinningStackpotPostcodes).head))),
-      won = Map("STACKPOT" -> Some(true)))
-
-    val subscriberWinningStackpotMultipleWatching = Scenario(
-      "Stackpot Scenario - Winning Subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = defaultNonWinningSubscriber.postcodesWatching.map(pc => pc :+ Random.shuffle(defaultWinningStackpotPostcodes).head)),
-      won = Map("STACKPOT" -> Some(true)))
-
-    val subscriberMultipleWinningStackpotMultipleWatching = Scenario(
-      "Stackpot Scenario - Multiple winning subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(defaultWinningStackpotPostcodes)),
-      won = Map("STACKPOT" -> Some(true)))
-
-    val subscriberNotSubscribedToPostcodes = Scenario(
-      "Stackpot Scenario - Subscriber not subscribed to postcodes",
-      defaultNonWinningSubscriber.copy(postcodesWatching = None)
-    )
-
-    val noResultsReceivedForStackpot = Scenario(
-      "Stackpot Scenario - No results received",
-      defaultNonWinningSubscriber,
-      resultsNotReceivedFor = List("STACKPOT"),
-      won = Map("STACKPOT" -> None)
-    )
-
-    List(nonWinningSubscriber, subscriberWinningStackpotSingleWatching, subscriberWinningStackpotMultipleWatching, subscriberMultipleWinningStackpotMultipleWatching, subscriberNotSubscribedToPostcodes, noResultsReceivedForStackpot)
-  }
-
-  val emojiSubscriberScenarios: List[Scenario] = {
-    val nonWinningSubscriber = Scenario(
-      "Emoji Scenario - Non Winning Subscriber",
-      defaultNonWinningSubscriber)
-
-    val subscriberWinningEmojiSingleSetWatching = Scenario(
-      "Emoji Scenario - Winning Subscriber, single emoji set watching",
-      defaultNonWinningSubscriber
-        .copy(emojiSetsWatching = Some(List(defaultWinningEmojiSet))),
-      won = Map("EMOJI" -> Some(true)))
-
-    val subscriberWinningEmojiSetMultipleWatching = Scenario(
-      "Emoji Scenario - Winning Subscriber, multiple emoji sets watching",
-      defaultNonWinningSubscriber
-        .copy(emojiSetsWatching = defaultNonWinningSubscriber.emojiSetsWatching.map(em => em :+ defaultWinningEmojiSet)),
-      won = Map("EMOJI" -> Some(true)))
-
-    val subscriberNotSubscribedToEmojis = Scenario(
-      "Emoji Scenario - Subscriber not subscribed to postcodes",
-      defaultNonWinningSubscriber.copy(emojiSetsWatching = None)
-    )
-
-    val noResultsReceivedForEmoji = Scenario(
-      "Emoji Scenario - No results received",
-      defaultNonWinningSubscriber,
-      resultsNotReceivedFor = List("EMOJI"),
-      won = Map("EMOJI" -> None)
-    )
-
-    List(nonWinningSubscriber, subscriberWinningEmojiSingleSetWatching, subscriberWinningEmojiSetMultipleWatching, subscriberNotSubscribedToEmojis, noResultsReceivedForEmoji)
-  }
-
-  val multipleWinningScenarios: List[Scenario] = {
-    val winPostcodeDinnerEmojiSubscriber = Scenario(
-      "Multiple Winning Scenario - Win Postcode, Dinner Emoji Subscriber",
-      defaultNonWinningSubscriber.copy(
-        postcodesWatching = Some(List(defaultWinningPostcode)),
-        dinnerUsersWatching = Some(List(Random.shuffle(defaultWinningDinnerUsers).head)),
-        emojiSetsWatching = Some(List(defaultWinningEmojiSet))),
-      won = Map(
-        "POSTCODE" -> Some(true),
-        "DINNER" -> Some(true),
-        "EMOJI" -> Some(true))
-    )
-
-    val winPostcodeStackpotSurveyDrawSubscriber = Scenario(
-      "Multiple Winning Scenario - Win Postcode, Stackpot, Survey Draw Subscriber",
-      defaultNonWinningSubscriber.copy(
-        postcodesWatching = Some(List(
-          defaultWinningPostcode,
-          Random.shuffle(defaultWinningStackpotPostcodes).head,
-          Random.shuffle(defaultWinningSurveyDrawPostcodes).head))),
-      won = Map(
-        "POSTCODE" -> Some(true),
-        "STACKPOT" -> Some(true),
-        "SURVEYDRAW" -> Some(true))
-    )
-    List(winPostcodeDinnerEmojiSubscriber, winPostcodeStackpotSurveyDrawSubscriber)
-  }
-}
