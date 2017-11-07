@@ -22,7 +22,7 @@ trait ResultsProcessor {
     override val resultType = DinnerResultType
   }
 
-  lazy val surveyDrawResultsCache: RedisResultCache[List[Postcode]] = new RedisResultCache[List[Postcode]] {
+  lazy val surveyDrawResultsCache: RedisResultCache[Postcode] = new RedisResultCache[Postcode] {
     override val config: RedisConfig = redisConfig
     override val resultType = SurveyDrawResultType
   }
@@ -89,11 +89,11 @@ trait ResultsProcessor {
     })
   }
 
-  private def handleSurveyDrawResult(subscriberPostcodesOpt: Option[List[Postcode]], winningResultOpt: Option[List[Postcode]]): Option[SubscriberResult[List[Postcode], List[Postcode]]] = {
+  private def handleSurveyDrawResult(subscriberPostcodesOpt: Option[List[Postcode]], winningResultOpt: Option[Postcode]): Option[SubscriberResult[Postcode, List[Postcode]]] = {
     subscriberPostcodesOpt.map(subPostcodes => {
       winningResultOpt match {
-        case Some(winningPostcodes) if winningPostcodes.intersect(subPostcodes).nonEmpty => SubscriberResult(SurveyDrawResultType, subPostcodes, Some(winningPostcodes), Some(true))
-        case Some(winningPostcodes) if winningPostcodes.intersect(subPostcodes).isEmpty  => SubscriberResult(SurveyDrawResultType, subPostcodes, Some(winningPostcodes), Some(false))
+        case Some(winningPostcode) if subPostcodes.contains(winningPostcode) => SubscriberResult(SurveyDrawResultType, subPostcodes, Some(winningPostcode), Some(true))
+        case Some(winningPostcode) if !subPostcodes.contains(winningPostcode)   => SubscriberResult(SurveyDrawResultType, subPostcodes, Some(winningPostcode), Some(false))
         case None => SubscriberResult(SurveyDrawResultType, subPostcodes, None, None)
       }
     })

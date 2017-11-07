@@ -1,5 +1,7 @@
-package results
+package com.postcodelotterychecker.results
 
+import cats.effect.IO
+import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
 
@@ -15,7 +17,7 @@ trait SubscriberScenarios {
   val defaultWinningPostcode = Postcode("TR18HJ")
   val defaultWinningDinnerUsers = List(DinnerUserName("user1"), DinnerUserName("user2"))
   val defaultWinningStackpotPostcodes = List(Postcode("DEF456"), Postcode("EFG567"), Postcode("FGH678"))
-  val defaultWinningSurveyDrawPostcodes = List(Postcode("ABC123"), Postcode("BCD234"), Postcode("CDE345"))
+  val defaultWinningSurveyDrawPostcode = Postcode("ABC123")
   val defaultWinningEmojiSet = Set(Emoji("aaaaa"), Emoji("bbbbb"), Emoji("ccccc"), Emoji("ddddd"), Emoji("eeeee"))
 
   val defaultNonWinningSubscriber = Subscriber(
@@ -105,19 +107,13 @@ trait SubscriberScenarios {
     val subscriberWinningSurveyDrawSingleWatching = Scenario(
       "Survey Draw Scenario - Winning Subscriber, single postcode watching",
       defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(List(Random.shuffle(defaultWinningSurveyDrawPostcodes).head))),
+        .copy(postcodesWatching = Some(List(defaultWinningSurveyDrawPostcode))),
       won = Map(SurveyDrawCompetition -> Some(true)))
 
     val subscriberWinningSurveyDrawMultipleWatching = Scenario(
       "Survey Draw Scenario - Winning Subscriber, multiple postcodes watching",
       defaultNonWinningSubscriber
-        .copy(postcodesWatching = defaultNonWinningSubscriber.postcodesWatching.map(pc => pc :+ Random.shuffle(defaultWinningSurveyDrawPostcodes).head)),
-      won = Map(SurveyDrawCompetition -> Some(true)))
-
-    val subscriberMultipleWinningSurveyDrawMultipleWatching = Scenario(
-      "Survey Draw Scenario - Multiple winning subscriber, multiple postcodes watching",
-      defaultNonWinningSubscriber
-        .copy(postcodesWatching = Some(defaultWinningSurveyDrawPostcodes)),
+        .copy(postcodesWatching = defaultNonWinningSubscriber.postcodesWatching.map(pc => pc :+ defaultWinningSurveyDrawPostcode)),
       won = Map(SurveyDrawCompetition -> Some(true)))
 
     val subscriberNotSubscribedToPostcodes = Scenario(
@@ -132,7 +128,7 @@ trait SubscriberScenarios {
       won = Map(SurveyDrawCompetition -> None)
     )
 
-    List(nonWinningSubscriber, subscriberWinningSurveyDrawSingleWatching, subscriberWinningSurveyDrawMultipleWatching, subscriberMultipleWinningSurveyDrawMultipleWatching, subscriberNotSubscribedToPostcodes, noResultsReceivedForSurveyDraw)
+    List(nonWinningSubscriber, subscriberWinningSurveyDrawSingleWatching, subscriberWinningSurveyDrawMultipleWatching, subscriberNotSubscribedToPostcodes, noResultsReceivedForSurveyDraw)
   }
 
   val stackpotSubscriberScenarios: List[Scenario] = {
@@ -224,12 +220,32 @@ trait SubscriberScenarios {
         postcodesWatching = Some(List(
           defaultWinningPostcode,
           Random.shuffle(defaultWinningStackpotPostcodes).head,
-          Random.shuffle(defaultWinningSurveyDrawPostcodes).head))),
+          defaultWinningSurveyDrawPostcode))),
       won = Map(
         PostcodeCompetition -> Some(true),
         StackpotCompetition -> Some(true),
         SurveyDrawCompetition -> Some(true))
     )
     List(winPostcodeDinnerEmojiSubscriber, winPostcodeStackpotSurveyDrawSubscriber)
+  }
+
+  def writeWinningDataToCache(uuid: String,
+                              postcodeResultsCache: RedisResultCache[Postcode],
+                              dinnerResultsCache: RedisResultCache[List[DinnerUserName]],
+                              stackpotResultsCache: RedisResultCache[List[Postcode]],
+                              surveyDrawResultsCache: RedisResultCache[Postcode],
+                              emojiResultsCache: RedisResultCache[Set[Emoji]],
+                              winningPostcodeOpt: Option[Postcode] = Some(defaultWinningPostcode),
+                              winningDinnerUsersOpt: Option[List[DinnerUserName]] = Some(defaultWinningDinnerUsers),
+                              winningStackpotPostcodesOpt: Option[List[Postcode]] = Some(defaultWinningStackpotPostcodes),
+                              winningSurveyDrawPostcodesOpt: Option[Postcode] = Some(defaultWinningSurveyDrawPostcode),
+                              winningEmojiSetOpt: Option[Set[Emoji]] = Some(defaultWinningEmojiSet)) = {
+    (for {
+      _ <- winningPostcodeOpt.fold(IO.unit)(p => postcodeResultsCache.cache(uuid, p).map(_ => ()))
+      _ <- winningDinnerUsersOpt.fold(IO.unit)(p => dinnerResultsCache.cache(uuid, p).map(_ => ()))
+      _ <- winningStackpotPostcodesOpt.fold(IO.unit)(p => stackpotResultsCache.cache(uuid, p).map(_ => ()))
+      _ <- winningSurveyDrawPostcodesOpt.fold(IO.unit)(p => surveyDrawResultsCache.cache(uuid, p).map(_ => ()))
+      _ <- winningEmojiSetOpt.fold(IO.unit)(p => emojiResultsCache.cache(uuid, p).map(_ => ()))
+    } yield ()).unsafeRunSync()
   }
 }

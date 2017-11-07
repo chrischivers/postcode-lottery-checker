@@ -13,22 +13,24 @@ case class Config(postcodeCheckerConfig: CheckerConfig,
                   quidcoHitterConfig: CheckerConfig,
                   emojiCheckerConfig: CheckerConfig,
                   emailerConfig: EmailerConfig,
-//                  s3Config: S3Config,
-//                  postgresDBConfig: PostgresDBConfig,
-                  redisConfig: RedisConfig)
+                  redisConfig: RedisConfig,
+                  resultsProcessorConfig: ResultsProcessorConfig)
 
 
 case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String, numberAttempts: Int, secondsBetweenAttempts: Int)
-//case class S3Config(accessKey: String, secretAccessKey: String, region: String, resultsBucketName: String, usersBucketName: String)
+
 case class PostgresDBConfig(host: String, port: Int, username: String, password: String, dbName: String)
+
 case class RedisConfig(host: String, port: Int, dbIndex: Int, resultsTTL: FiniteDuration)
 
 case class CheckerConfig(directWebAddressPrefix: String, directWebAddressSuffix: String, uuid: String, lambdaTriggerUrl: String)
 
+case class ResultsProcessorConfig(timeBetweenRetries: FiniteDuration, timeCutoff: FiniteDuration)
+
 object ConfigLoader {
 
   private val defaultConfigFactory = ConfigFactory.load()
-//  private val postgresDBParamsPrefix = "db.postgres."
+  //  private val postgresDBParamsPrefix = "db.postgres."
 
   val defaultConfig: Config = {
     Config(
@@ -77,26 +79,15 @@ object ConfigLoader {
         defaultConfigFactory.getInt("email.numberAttempts"),
         defaultConfigFactory.getInt("email.secondsBetweenAttempts")
       ),
-//      S3Config(
-//        defaultConfigFactory.getString("s3.accessKey"),
-//        defaultConfigFactory.getString("s3.secretAccessKey"),
-//        defaultConfigFactory.getString("s3.region"),
-//        defaultConfigFactory.getString("s3.resultsBucketName"),
-//        defaultConfigFactory.getString("s3.usersBucketName")
-//
-//      ),
-//      PostgresDBConfig(
-//        defaultConfigFactory.getString(postgresDBParamsPrefix + "host"),
-//        defaultConfigFactory.getInt(postgresDBParamsPrefix + "port"),
-//        defaultConfigFactory.getString(postgresDBParamsPrefix + "username"),
-//        defaultConfigFactory.getString(postgresDBParamsPrefix + "password"),
-//        defaultConfigFactory.getString(postgresDBParamsPrefix + "dbName")
-//      ),
       RedisConfig(
         defaultConfigFactory.getString("redis.host"),
         defaultConfigFactory.getInt("redis.port"),
         defaultConfigFactory.getInt("redis.dbIndex"),
         FiniteDuration(defaultConfigFactory.getDuration("redis.resultsTTL").toMillis, TimeUnit.MILLISECONDS)
+      ),
+      ResultsProcessorConfig(
+        FiniteDuration(defaultConfigFactory.getDuration("resultsProcessor.timeBetweenRetries").toMillis, TimeUnit.MILLISECONDS),
+        FiniteDuration(defaultConfigFactory.getDuration("resultsProcessor.timeCutoff").toMillis, TimeUnit.MILLISECONDS)
       )
     )
   }

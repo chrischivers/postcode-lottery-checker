@@ -1,10 +1,9 @@
-package com.postcodelotterychecker
+package com.postcodelotterychecker.checkers
 
 import com.gargoylesoftware.htmlunit._
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import com.gargoylesoftware.htmlunit.util.FalsifyingWebConnection
 import com.typesafe.scalalogging.StrictLogging
-
 
 class HtmlUnitWebClient extends StrictLogging {
 
@@ -38,15 +37,16 @@ class HtmlUnitWebClient extends StrictLogging {
   def waitForBackgroundJS(webClient: WebClient) = {
     webClient.waitForBackgroundJavaScriptStartingBefore(30000)
   }
-}
 
-private class InterceptWebConnection(webClient: WebClient) extends FalsifyingWebConnection(webClient) {
+  class InterceptWebConnection(webClient: WebClient) extends FalsifyingWebConnection(webClient) {
 
-  override def getResponse(request: WebRequest): WebResponse = {
-    super.getResponse(request)
-        val response = super.getResponse(request)
-        if (response.getWebRequest.getUrl.toString.contains("delivery.d.switchadhub.com/adserver"))
-          createWebResponse(response.getWebRequest, "", "application/javascript", 200, "Ok")
-        else super.getResponse(request)
+    override def getResponse(request: WebRequest): WebResponse = {
+      super.getResponse(request)
+      val response = super.getResponse(request)
+      if (response.getWebRequest.getUrl.toString.contains("delivery.d.switchadhub.com/adserver"))
+        createWebResponse(response.getWebRequest, "", "application/javascript", 200, "Ok")
+      else super.getResponse(request)
+    }
   }
 }
+

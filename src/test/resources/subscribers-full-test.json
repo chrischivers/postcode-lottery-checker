@@ -1,0 +1,23 @@
+
+ [
+    { "email" : "singlePostcode@test.com",
+      "postCodesWatching" : ["ABC123"]
+    },
+   { "email" : "singleDinnerUser@test.com",
+     "dinnerUsersWatching" : ["TestUser1"]
+   },
+   { "email" : "singleEmojiSet@test.com",
+     "emojisWatching": [["eeeee","ccccc","bbbbb","ddddd","aaaaa"]]
+   },
+   { "email" : "singleEverything@test.com",
+     "postCodesWatching" : ["ABC123"],
+     "dinnerUsersWatching" : ["TestUser1"],
+     "emojisWatching": [["eeeee","ccccc","bbbbb","ddddd","aaaaa"]]
+   },
+   { "email" : "multipleEverything@test.com",
+     "postCodesWatching" : ["ABC123", "BCD234"],
+     "dinnerUsersWatching" : ["TestUser1", "TestUser2"],
+     "emojisWatching": [["eeeee","ccccc","bbbbb","ddddd","aaaaa"], ["fffff","ggggg","hhhhh","iiiii","jjjjj"]]
+   }
+]
+      

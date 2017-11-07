@@ -7,12 +7,11 @@ import com.postcodelotterychecker.models.Subscriber
 
 trait ResultsEmailer {
 
-  val resultsData: Map[Subscriber, SubscriberResults]
   val emailClient: EmailClient
 
-  def sendEmails(): IO[Unit] = IO {
+  def sendEmails(resultsData: Map[Subscriber, SubscriberResults]): IO[Int] = IO {
 
-    resultsData.foreach { case (subscriber, subscriberResults) =>
+    resultsData.foldLeft(0) { case (acc, (subscriber, subscriberResults)) =>
       val competitionsWon: List[Competition] = wonAnyCompetitions(subscriberResults)
       val subject = if (competitionsWon.isEmpty) "Sorry you have not won today" else s"Congratulations you have won ${competitionsWon.map(_.name).mkString(", ")}"
       val emailBody =
@@ -33,6 +32,7 @@ trait ResultsEmailer {
       val email = Email(subject, emailBody, subscriber.email)
 
       emailClient.sendEmail(email)
+      acc + 1
     }
   }
 
@@ -66,8 +66,8 @@ trait ResultsEmailer {
     List(
       hasSubscriberResultWon(subscriberResults.postcodeResult),
       hasSubscriberResultWon(subscriberResults.dinnerResult),
-      hasSubscriberResultWon(subscriberResults.surveyDrawResult),
       hasSubscriberResultWon(subscriberResults.stackpotResult),
+      hasSubscriberResultWon(subscriberResults.surveyDrawResult),
       hasSubscriberResultWon(subscriberResults.emojiResult),
     ).flatten
   }

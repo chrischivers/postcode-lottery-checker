@@ -2,7 +2,9 @@ package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
 import com.postcodelotterychecker._
-import com.postcodelotterychecker.models.Postcode
+import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.models.ResultTypes.{EmojiResultType, PostcodeResultType}
+import com.postcodelotterychecker.models.{Emoji, Postcode}
 import com.postcodelotterychecker.utils.Utils
 
 trait PostcodeChecker extends CheckerRequestHandler[Postcode] {
@@ -12,9 +14,6 @@ trait PostcodeChecker extends CheckerRequestHandler[Postcode] {
     logger.info(s"Postcode Checker: Starting up using address $webAddress")
     getPostcodeFrom(webAddress)
   }
-
-  override def sendResult(result: Postcode) = ???
-
 
   private def getPostcodeFrom(webAddress: String): IO[Postcode] = IO {
     logger.info(s"Postcode Checker: Processing web address: $webAddress")
@@ -42,4 +41,8 @@ trait PostcodeChecker extends CheckerRequestHandler[Postcode] {
 object PostcodeChecker extends PostcodeChecker {
   override val config = ConfigLoader.defaultConfig.postcodeCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
+  override val redisResultCache = new RedisResultCache[Postcode] {
+    override val resultType = PostcodeResultType
+    override val config = ConfigLoader.defaultConfig.redisConfig
+  }
 }

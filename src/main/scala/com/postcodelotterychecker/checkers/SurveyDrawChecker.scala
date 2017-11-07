@@ -2,8 +2,10 @@ package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor
-import com.postcodelotterychecker.{ConfigLoader, HtmlUnitWebClient}
+import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.models.Postcode
+import com.postcodelotterychecker.models.ResultTypes.{StackpotResultType, SurveyDrawResultType}
 import com.postcodelotterychecker.utils.Utils
 
 
@@ -14,8 +16,6 @@ trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
     logger.info(s"Survey Draw Checker: Starting up using address $webAddress")
     getSurveyDrawResultFrom(webAddress)
   }
-
-  override def sendResult(result: Postcode) = ???
 
   private def getSurveyDrawResultFrom(webAddress: String): IO[Postcode] = IO {
     logger.info(s"Survey Draw Checker: Processing web address: $webAddress")
@@ -60,4 +60,8 @@ trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
 object SurveyDrawChecker extends SurveyDrawChecker {
   override val config = ConfigLoader.defaultConfig.surveyDrawCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
+  override val redisResultCache = new RedisResultCache[Postcode] {
+    override val resultType = SurveyDrawResultType
+    override val config = ConfigLoader.defaultConfig.redisConfig
+  }
 }

@@ -1,8 +1,10 @@
-package checkers
+package com.postcodelotterychecker.checkers
 
 import com.postcodelotterychecker._
-import com.postcodelotterychecker.checkers.EmojiChecker
+import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.checkers.{EmojiChecker, HtmlUnitWebClient}
 import com.postcodelotterychecker.models.Emoji
+import com.postcodelotterychecker.models.ResultTypes.EmojiResultType
 import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
 import com.xebialabs.restito.semantics.Action._
 import com.xebialabs.restito.semantics.Condition._
@@ -23,6 +25,10 @@ trait EmojiCheckerTestSetup {
   val emojiChecker = new EmojiChecker {
     override val htmlUnitWebClient: HtmlUnitWebClient = new HtmlUnitWebClient
     override val config: CheckerConfig = emojiConfig
+    override val redisResultCache = new RedisResultCache[Set[Emoji]] {
+      override val resultType = EmojiResultType
+      override val config =  ConfigLoader.defaultConfig.redisConfig.copy(dbIndex = 1)
+    }
   }
 }
 
