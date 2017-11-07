@@ -24,6 +24,7 @@ libraryDependencies += "com.github.cb372" % "scalacache-core_2.12" % "0.10.0"
 libraryDependencies += "com.github.cb372" %% "scalacache-guava" % "0.10.0"
 libraryDependencies += "org.typelevel" %% "cats-effect" % "0.4"
 libraryDependencies += "com.github.etaty" %% "rediscala" % "1.8.0"
+libraryDependencies += "org.mockito" % "mockito-core" % "2.11.0"
 
 
 val circeVersion = "0.8.0"

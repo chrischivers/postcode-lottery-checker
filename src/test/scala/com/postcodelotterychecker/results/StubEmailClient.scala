@@ -1,4 +1,4 @@
-package results
+package com.postcodelotterychecker.results
 
 import com.postcodelotterychecker.results.{Email, EmailClient}
 

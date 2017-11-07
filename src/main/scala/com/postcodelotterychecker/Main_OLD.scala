@@ -81,15 +81,15 @@
 //
 //
 //    def checkAndEmail(lastAttempt: Boolean = false): Option[Future[Unit]] = {
-//      val postcodeUserResults = resultsFromS3Assembler.getUserResults("postcode-results", sessionUUid)
+//      val postcodeUserResults = resultsFromS3Assembler.getUserResults("postcode-com.postcodelotterychecker.results", sessionUUid)
 //      val postcodeWinningResult = resultsFromS3Assembler.getPostcodeWinningResult(sessionUUid)
-//      val stackpotUserResults = resultsFromS3Assembler.getUserResults("stackpot-results", sessionUUid)
+//      val stackpotUserResults = resultsFromS3Assembler.getUserResults("stackpot-com.postcodelotterychecker.results", sessionUUid)
 //      val stackpotWinningResult = resultsFromS3Assembler.getStackpotWinningResult(sessionUUid)
-//      val surveyDrawUserResults = resultsFromS3Assembler.getUserResults("survey-draw-results", sessionUUid)
+//      val surveyDrawUserResults = resultsFromS3Assembler.getUserResults("survey-draw-com.postcodelotterychecker.results", sessionUUid)
 //      val surveyDrawWinningResult = resultsFromS3Assembler.getSurveyDrawWinningResult(sessionUUid)
-//      val dinnerUserResults = resultsFromS3Assembler.getUserResults("dinner-results", sessionUUid)
+//      val dinnerUserResults = resultsFromS3Assembler.getUserResults("dinner-com.postcodelotterychecker.results", sessionUUid)
 //      val dinnerWinningResult = resultsFromS3Assembler.getDinnerWinningResult(sessionUUid)
-//      val emojiUserResults = resultsFromS3Assembler.getUserResults("emoji-results", sessionUUid)
+//      val emojiUserResults = resultsFromS3Assembler.getUserResults("emoji-com.postcodelotterychecker.results", sessionUUid)
 //      val emojiWinningResult = resultsFromS3Assembler.getEmojiWinningResult(sessionUUid)
 //
 //

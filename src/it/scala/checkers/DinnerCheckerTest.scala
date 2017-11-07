@@ -1,8 +1,10 @@
-package checkers
+package com.postcodelotterychecker.checkers
 
 import com.postcodelotterychecker._
-import com.postcodelotterychecker.checkers.DinnerChecker
+import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.checkers.{DinnerChecker, HtmlUnitWebClient}
 import com.postcodelotterychecker.models.DinnerUserName
+import com.postcodelotterychecker.models.ResultTypes.DinnerResultType
 import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
 import com.xebialabs.restito.semantics.Action._
 import com.xebialabs.restito.semantics.Condition._
@@ -23,6 +25,10 @@ trait DinnerCheckerTestSetup {
   val dinnerChecker = new DinnerChecker {
     override val htmlUnitWebClient: HtmlUnitWebClient = new HtmlUnitWebClient
     override val config: CheckerConfig = dinnerConfig
+    override val redisResultCache = new RedisResultCache[List[DinnerUserName]] {
+      override val resultType = DinnerResultType
+      override val config = ConfigLoader.defaultConfig.redisConfig.copy(dbIndex = 1)
+    }
   }
 }
 

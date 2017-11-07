@@ -1,16 +1,18 @@
 package com.postcodelotterychecker.subscribers
 
+import cats.effect.IO
 import com.postcodelotterychecker.models.Subscriber
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.parser._
+
 import scala.io.Source
 
 trait SubscribersFetcher extends StrictLogging {
 
   val subscribersFileName: String
 
-  //TODO move to DB
-  def getSubscribers = {
+  def getSubscribers: IO[List[Subscriber]] = IO {
+
     val rawStr = Source.fromResource(subscribersFileName).mkString
 
     (for {
@@ -23,8 +25,4 @@ trait SubscribersFetcher extends StrictLogging {
       case Right(list) => list
     }
   }
-}
-
-object SubscribersFetcher extends SubscribersFetcher {
-  override val subscribersFileName = "subscribers.json"
 }

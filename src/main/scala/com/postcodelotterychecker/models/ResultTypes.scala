@@ -83,20 +83,14 @@ object ResultTypes {
 
   }
 
-  case object SurveyDrawResultType extends ResultType[List[Postcode], List[Postcode]] {
+  case object SurveyDrawResultType extends ResultType[Postcode, List[Postcode]] {
 
     override val id = "SURVEYDRAW"
     override val competition: Competition = SurveyDrawCompetition
-    override val resultToString: List[Postcode] => String = _.map(_.value).mkString(", ")
+    override val resultToString: Postcode => String = _.value
     override val watchingToString: List[Postcode] => String = _.map(_.value).mkString(", ")
 
-    implicit val resultEncoder: Encoder[List[Postcode]] = new Encoder[List[Postcode]] {
-      override def apply(a: List[Postcode]): Json =
-        Json.fromValues(a.map(postcode => Json.fromString(postcode.value)))
-    }
-    implicit val resultDecoder: Decoder[List[Postcode]] = new Decoder[List[Postcode]] {
-      override def apply(c: HCursor): Result[List[Postcode]] =
-        c.as[List[String]].map(_.map(Postcode(_)))
-    }
+    implicit val resultEncoder: Encoder[Postcode] = deriveEncoder
+    implicit val resultDecoder: Decoder[Postcode] = deriveDecoder
   }
 }

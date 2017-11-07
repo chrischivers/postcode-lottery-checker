@@ -1,9 +1,8 @@
-package caching
+package com.postcodelotterychecker.caching
 
 import java.util.UUID
 
 import com.postcodelotterychecker._
-import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode}
 import org.scalatest.{FlatSpec, Matchers}
@@ -49,16 +48,16 @@ class RedisResultCacheTest extends FlatSpec with Matchers {
 
   }
 
-  it should "store winning survey draw postcodes" in new RedisResultCache[List[Postcode]] {
+  it should "store winning survey draw postcodes" in new RedisResultCache[Postcode] {
 
     override val config: RedisConfig = ConfigLoader.defaultConfig.redisConfig.copy(dbIndex = 1)
     override val resultType = SurveyDrawResultType
 
     val uuid = UUID.randomUUID().toString
-    val surveyDrawPostcodes = List(Postcode("ABC123"), Postcode("BCD234"), Postcode("CDE345"))
+    val surveyDrawPostcode = Postcode("ABC123")
 
-    cache(uuid, surveyDrawPostcodes).unsafeRunSync()
-    get(uuid).unsafeRunSync() shouldBe Some(surveyDrawPostcodes)
+    cache(uuid, surveyDrawPostcode).unsafeRunSync()
+    get(uuid).unsafeRunSync() shouldBe Some(surveyDrawPostcode)
 
   }
 

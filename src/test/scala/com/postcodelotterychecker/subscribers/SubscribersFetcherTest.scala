@@ -1,4 +1,4 @@
-package checkers
+package com.postcodelotterychecker.checkers
 
 import java.io.{File, PrintWriter}
 
@@ -19,7 +19,7 @@ class SubscribersFetcherTest extends FlatSpec with Matchers {
 
     writeNewSubscribersFile(subscribersFileName, generateJsonStr(List(subscriber)))
 
-    getSubscribers shouldBe List(subscriber)
+    getSubscribers.unsafeRunSync() shouldBe List(subscriber)
   }
 
   it should "read subscribers from Json if they are not participating in one competition" in new SubscribersFetcher {
@@ -33,7 +33,7 @@ class SubscribersFetcherTest extends FlatSpec with Matchers {
 
     writeNewSubscribersFile(subscribersFileName, generateJsonStr(List(subscriber)))
 
-    getSubscribers shouldBe List(subscriber)
+    getSubscribers.unsafeRunSync() shouldBe List(subscriber)
   }
 
   it should "read multiple subscribers from Json" in new SubscribersFetcher {
@@ -52,7 +52,7 @@ class SubscribersFetcherTest extends FlatSpec with Matchers {
 
     writeNewSubscribersFile(subscribersFileName, generateJsonStr(List(subscriber1, subscriber2)))
 
-    getSubscribers shouldBe List(subscriber1, subscriber2)
+    getSubscribers.unsafeRunSync() shouldBe List(subscriber1, subscriber2)
   }
 
   def writeNewSubscribersFile(fileName: String, content: String) = {

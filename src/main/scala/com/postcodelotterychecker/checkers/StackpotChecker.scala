@@ -2,8 +2,11 @@ package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
 import com.postcodelotterychecker._
+import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.models.Postcode
+import com.postcodelotterychecker.models.ResultTypes.{PostcodeResultType, StackpotResultType}
 import com.postcodelotterychecker.utils.Utils
+
 import scala.collection.JavaConverters._
 
 trait StackpotChecker extends CheckerRequestHandler[List[Postcode]] {
@@ -13,8 +16,6 @@ trait StackpotChecker extends CheckerRequestHandler[List[Postcode]] {
     logger.info(s"Stackpot Checker: Starting up using address $webAddress")
     getStackpotPostcodesFrom(webAddress)
   }
-
-  override def sendResult(result: List[Postcode]) = ???
 
   private def getStackpotPostcodesFrom(webAddress: String): IO[List[Postcode]] = IO {
     logger.info(s"Stackpot Checker: Processing web address: $webAddress")
@@ -41,4 +42,8 @@ trait StackpotChecker extends CheckerRequestHandler[List[Postcode]] {
 object StackpotChecker extends StackpotChecker {
   override val config = ConfigLoader.defaultConfig.stackpotCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
+  override val redisResultCache = new RedisResultCache[List[Postcode]] {
+    override val resultType = StackpotResultType
+    override val config = ConfigLoader.defaultConfig.redisConfig
+  }
 }
