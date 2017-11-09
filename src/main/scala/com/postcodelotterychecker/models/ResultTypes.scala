@@ -93,4 +93,16 @@ object ResultTypes {
     implicit val resultEncoder: Encoder[Postcode] = deriveEncoder
     implicit val resultDecoder: Decoder[Postcode] = deriveDecoder
   }
+
+  case object QuidcoHitterResultType extends ResultType[Unit, Unit] {
+
+    override val id = "QUIDCO"
+    override val competition: Competition = QuidcoHitterCompetition
+    override val resultToString: Unit => String = _ => ""
+    override val watchingToString: Unit => String = _ => ""
+
+    implicit val resultEncoder: Encoder[Unit] = deriveEncoder
+    implicit val resultDecoder: Decoder[Unit] = deriveDecoder
+
+  }
 }

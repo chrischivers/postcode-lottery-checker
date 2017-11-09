@@ -1,9 +1,21 @@
-{
-  "users": [
-    { "email" : "chrischivers@gmail.com",
-      "postCodesWatching" : ["RH27HU"],
-      "dinnerUsersWatching" : ["chrischivers", "sallychen"],
-      "emojisWatching": [["1f917", "1f635", "1f632", "1f431", "1f427"]]
-    }
-  ]
-}
+[
+  {
+    "email": "chrischivers@gmail.com",
+    "postCodesWatching": [
+      "RH27HU"
+    ],
+    "dinnerUsersWatching": [
+      "chrischivers",
+      "sallychen"
+    ],
+    "emojisWatching": [
+      [
+        "1f917",
+        "1f635",
+        "1f632",
+        "1f431",
+        "1f427"
+      ]
+    ]
+  }
+]

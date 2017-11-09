@@ -239,13 +239,15 @@ trait SubscriberScenarios {
                               winningDinnerUsersOpt: Option[List[DinnerUserName]] = Some(defaultWinningDinnerUsers),
                               winningStackpotPostcodesOpt: Option[List[Postcode]] = Some(defaultWinningStackpotPostcodes),
                               winningSurveyDrawPostcodesOpt: Option[Postcode] = Some(defaultWinningSurveyDrawPostcode),
-                              winningEmojiSetOpt: Option[Set[Emoji]] = Some(defaultWinningEmojiSet)) = {
+                              winningEmojiSetOpt: Option[Set[Emoji]] = Some(defaultWinningEmojiSet),
+                              delay: Long = 0) = {
     (for {
       _ <- winningPostcodeOpt.fold(IO.unit)(p => postcodeResultsCache.cache(uuid, p).map(_ => ()))
       _ <- winningDinnerUsersOpt.fold(IO.unit)(p => dinnerResultsCache.cache(uuid, p).map(_ => ()))
+      _ = Thread.sleep(delay) //simulate waiting/hanging
       _ <- winningStackpotPostcodesOpt.fold(IO.unit)(p => stackpotResultsCache.cache(uuid, p).map(_ => ()))
       _ <- winningSurveyDrawPostcodesOpt.fold(IO.unit)(p => surveyDrawResultsCache.cache(uuid, p).map(_ => ()))
       _ <- winningEmojiSetOpt.fold(IO.unit)(p => emojiResultsCache.cache(uuid, p).map(_ => ()))
-    } yield ()).unsafeRunSync()
+    } yield ()).unsafeRunAsync(_ => ())
   }
 }

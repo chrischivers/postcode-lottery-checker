@@ -1,8 +1,10 @@
 package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
 import com.postcodelotterychecker._
 import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.checkers.CheckerRequestHandler.{Request, Response}
 import com.postcodelotterychecker.models.DinnerUserName
 import com.postcodelotterychecker.models.ResultTypes.DinnerResultType
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
@@ -19,23 +21,30 @@ trait DinnerChecker extends CheckerRequestHandler[List[DinnerUserName]] {
   }
 
   private def getDinnerUserNamesFrom(webAddress: String): IO[List[DinnerUserName]] = IO {
-      logger.info(s"Dinner Checker: Processing web address: $webAddress")
+    logger.info(s"Dinner Checker: Processing web address: $webAddress")
 
-      val browser = JsoupBrowser()
-      val doc = browser.get(webAddress)
-      val list = (doc >> texts(".name")).toSet.toList
-      logger.info("Winning User names: " + list)
-      if (list.isEmpty) throw new RuntimeException("No dinner winners found on webpage")
-      list.map(str => DinnerUserName(str.toLowerCase))
-    }
+    val browser = JsoupBrowser()
+    val doc = browser.get(webAddress)
+    val list = (doc >> texts(".name")).toSet.toList
+    logger.info("Winning User names: " + list)
+    if (list.isEmpty) throw new RuntimeException("No dinner winners found on webpage")
+    list.map(str => DinnerUserName(str.toLowerCase))
+  }
 }
 
-object DinnerChecker extends DinnerChecker {
+class _DinnerChecker extends RequestHandler[Request, Response] with DinnerChecker {
   override val config = ConfigLoader.defaultConfig.dinnerCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
   override val redisResultCache = new RedisResultCache[List[DinnerUserName]] {
     override val resultType = DinnerResultType
     override val config = ConfigLoader.defaultConfig.redisConfig
+  }
 
+  override def handleRequest(input: CheckerRequestHandler.Request, context: Context) = {
+
+    (for {
+      result <- getResult
+      _ <- cacheResult(input.uuid, result)
+    } yield Response(true)).unsafeRunSync()
   }
 }
