@@ -27,4 +27,8 @@ object Competitions {
   case object EmojiCompetition extends Competition {
     override val name: String = "Emoji Lottery"
   }
+
+  case object QuidcoHitterCompetition extends Competition {
+    override val name: String = "Quidco Hitter"
+  }
 }

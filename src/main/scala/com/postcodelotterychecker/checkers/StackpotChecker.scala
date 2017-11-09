@@ -1,8 +1,11 @@
 package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import com.gargoylesoftware.htmlunit.html.HtmlElement
 import com.postcodelotterychecker._
 import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.checkers.CheckerRequestHandler.{Request, Response}
 import com.postcodelotterychecker.models.Postcode
 import com.postcodelotterychecker.models.ResultTypes.{PostcodeResultType, StackpotResultType}
 import com.postcodelotterychecker.utils.Utils
@@ -26,24 +29,34 @@ trait StackpotChecker extends CheckerRequestHandler[List[Postcode]] {
 
       logger.debug(page.asXml().mkString)
 
-      val elements1 = page.getElementById("result-header").getElementsByTagName("p")
-      elements1.asScala.toList.map(htmlElem => {
-        val textContent = htmlElem.getTextContent
-        logger.debug(s"Text content: $textContent")
+      val postcodeTags = page.getByXPath[HtmlElement]("//p[@class='postcode']").asScala.toList
 
-        val postcodeRetrieved = Postcode(textContent.trim().split("\n").map(_.trim).apply(0))
-        if (postcodeRetrieved.isValid) postcodeRetrieved.trim
-        else throw new RuntimeException(s"Postcode ${postcodeRetrieved.value} unable to be validated")
-      })
+      val retrievedPostcodes = postcodeTags.map(el => {
+        el.removeChild("span", 0)
+        println(s"Text content: ${el.getTextContent}")
+        println(s"trimmed postcode: ${Postcode(el.getTextContent).trim}")
+        Postcode(el.getTextContent).trim
+      }).filter(maybePostcode => maybePostcode.isValid)
+
+      if (retrievedPostcodes.isEmpty) throw new RuntimeException(s"Postcode unable to be fetched/validated. Postcode tags: [${postcodeTags.map(el => el.asXml())}]")
+      else retrievedPostcodes
     }
   }
 }
 
-object StackpotChecker extends StackpotChecker {
+class _StackpotChecker extends RequestHandler[Request, Response] with StackpotChecker {
   override val config = ConfigLoader.defaultConfig.stackpotCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
   override val redisResultCache = new RedisResultCache[List[Postcode]] {
     override val resultType = StackpotResultType
     override val config = ConfigLoader.defaultConfig.redisConfig
+  }
+
+  override def handleRequest(input: CheckerRequestHandler.Request, context: Context) = {
+
+    (for {
+      result <- getResult
+      _ <- cacheResult(input.uuid, result)
+    } yield Response(true)).unsafeRunSync()
   }
 }

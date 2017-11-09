@@ -9,19 +9,11 @@ import com.typesafe.scalalogging.StrictLogging
 
 import scala.beans.BeanProperty
 
-trait CheckerRequestHandler[A] extends RequestHandler[Request, Response] with StrictLogging {
+trait CheckerRequestHandler[A] extends StrictLogging {
 
   val config: CheckerConfig
   val htmlUnitWebClient: HtmlUnitWebClient
   val redisResultCache: RedisResultCache[A]
-
-  override def handleRequest(input: CheckerRequestHandler.Request, context: Context) = {
-
-    (for {
-      result <- getResult
-      _ <- cacheResult(input.uuid, result)
-    } yield Response(true)).unsafeRunSync()
-  }
 
   def getResult: IO[A]
 

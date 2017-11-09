@@ -13,7 +13,7 @@ object Utils extends StrictLogging {
     @annotation.tailrec
     def retryHelper(n: Int)(fn: => T): T = {
       Try {
-        logger.info(s"attempting to run function. Attempt $n of $totalNumberOfAttempts")
+        logger.info(s"attempting to run function. Attempt ${n + 1} of $totalNumberOfAttempts")
         fn
       } match {
         case Success(x) => x

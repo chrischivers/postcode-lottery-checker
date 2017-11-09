@@ -27,7 +27,10 @@ class PostcodeCheckerTest extends FlatSpec with Matchers {
 
     override def getResult = IO.pure(winningPostcode)
 
-    handleRequest(Request(uuid), mock[Context])
+    (for {
+      result <- getResult
+      _ <- cacheResult(uuid, result)
+    } yield ()).unsafeRunSync()
 
     redisResultCache.get(uuid).unsafeRunSync() shouldBe Some(winningPostcode)
   }

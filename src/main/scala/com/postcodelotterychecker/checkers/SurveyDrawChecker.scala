@@ -1,17 +1,21 @@
 package com.postcodelotterychecker.checkers
 
 import cats.effect.IO
-import com.gargoylesoftware.htmlunit.html.HtmlAnchor
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import com.gargoylesoftware.htmlunit.html.{HtmlAnchor, HtmlElement}
 import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.ConfigLoader
+import com.postcodelotterychecker.checkers.CheckerRequestHandler.{Request, Response}
 import com.postcodelotterychecker.models.Postcode
 import com.postcodelotterychecker.models.ResultTypes.{StackpotResultType, SurveyDrawResultType}
 import com.postcodelotterychecker.utils.Utils
 
+import scala.collection.JavaConverters._
+
 
 trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
 
-  override def getResult: IO[Postcode]  = {
+  override def getResult: IO[Postcode] = {
     val webAddress = generateWebAddress
     logger.info(s"Survey Draw Checker: Starting up using address $webAddress")
     getSurveyDrawResultFrom(webAddress)
@@ -30,38 +34,40 @@ trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
 
       logger.debug(page.asXml().mkString)
 
-      val textContent = {
-        val t = {
-          val res = page.getElementById("result-header").getElementsByTagName("p").get(0)
-          res.removeChild("span", 0)
-          res.getTextContent
-        }
-        if (t.contains("Looking for a")) {
-          logger.info("text contained 'Looking for a', waiting longer...")
-          Thread.sleep(10000)
-          htmlUnitWebClient.waitForBackgroundJS(page.getWebClient)
+      val postcodeTagsFirstPass = page.getByXPath[HtmlElement]("//p[@class='postcode']").asScala
 
-          val res = page.getElementById("result-header").getElementsByTagName("p").get(0)
-          res.removeChild("span", 0)
-          res.getTextContent
-
-        } else t
+      if (postcodeTagsFirstPass.exists(_.getTextContent.contains("Looking for a"))) {
+        logger.info("text contained 'Looking for a', waiting longer...")
+        Thread.sleep(10000)
+        htmlUnitWebClient.waitForBackgroundJS(page.getWebClient)
       }
-      logger.info(s"textContent retrieved $textContent")
 
-      val postcodeRetrieved = Postcode(textContent.trim().split("\n").map(_.trim).apply(0))
+      val postcodeTagsSecondPass = page.getByXPath[HtmlElement]("//p[@class='postcode']").asScala
 
-      if (postcodeRetrieved.isValid) postcodeRetrieved.trim
-      else throw new RuntimeException(s"Postcode $postcodeRetrieved unable to be validated")
+      val retrievedPostcode = postcodeTagsSecondPass.map(el => {
+        el.removeChild("span", 0)
+        Postcode(el.getTextContent).trim
+      }).find(maybePostcode => maybePostcode.isValid)
+
+      retrievedPostcode.getOrElse(throw new RuntimeException(s"Postcode unable to be fetched/validated. Postcode tags: [${postcodeTagsSecondPass.map(el => el.asXml())}]"))
+
     }
   }
 }
 
-object SurveyDrawChecker extends SurveyDrawChecker {
+class _SurveyDrawChecker extends RequestHandler[Request, Response] with SurveyDrawChecker {
   override val config = ConfigLoader.defaultConfig.surveyDrawCheckerConfig
   override val htmlUnitWebClient = new HtmlUnitWebClient
   override val redisResultCache = new RedisResultCache[Postcode] {
     override val resultType = SurveyDrawResultType
     override val config = ConfigLoader.defaultConfig.redisConfig
+  }
+
+  override def handleRequest(input: CheckerRequestHandler.Request, context: Context) = {
+
+    (for {
+      result <- getResult
+      _ <- cacheResult(input.uuid, result)
+    } yield Response(true)).unsafeRunSync()
   }
 }
