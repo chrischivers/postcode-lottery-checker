@@ -1,0 +1,152 @@
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/registration.css">
+    <title>Postcode Lottery Checker Registration</title>
+</head>
+<body>
+
+<div class="container">
+    <h2>Postcode Lottery Checker Registration</h2>
+
+    <form id="registration-form">
+        <div class="messages"></div>
+        <div class="form-group ">
+            <label for="email">Email address:</label>
+            <input type="email" name="emailAddress" class="form-control" id="email"/>
+        </div>
+        <label>Postcodes to watch:</label>
+        <div class="form-group input-group">
+            <input type="text" name="postcodesWatching[]" class="form-control">
+            <span class="input-group-btn">
+            <button type="button" class="btn btn-default btn-add">+</button>
+        </span>
+        </div>
+
+        <label>Dinner users to watch:</label>
+        <div class="form-group input-group">
+            <input type="text" name="dinnerUsersWatching[]" class="form-control"/>
+            <span class="input-group-btn">
+            <button type="button" class="btn btn-default btn-add">+</button>
+        </span>
+        </div>
+
+        <label>Emojis to watch:</label>
+        <div class="form-group input-group">
+            <div class="col-xs-2">
+                <label>Set: </label>
+            </div>
+            <div class="col-xs-2">
+                <input type="text" name="emojiSetsWatchingA[]" class="form-control"/>
+            </div>
+            <div class="col-xs-2">
+                <input type="text" name="emojiSetsWatchingB[]" class="form-control"/>
+            </div>
+            <div class="col-xs-2">
+                <input type="text" name="emojiSetsWatchingC[]" class="form-control"/>
+            </div>
+            <div class="col-xs-2">
+                <input type="text" name="emojiSetsWatchingD[]" class="form-control"/>
+            </div>
+            <div class="col-xs-2">
+                <input type="text" name="emojiSetsWatchingE[]" class="form-control"/>
+            </div>
+            <span class="input-group-btn">
+                    <button type="button" class="btn btn-default btn-add">+</button>
+                </span>
+        </div>
+
+        <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+</div>
+
+<script src="assets/js/jquery-3.2.1.min.js"></script>
+<script>
+    (function ($) {
+        $(function () {
+
+            var addFormGroup = function (event) {
+                event.preventDefault();
+
+                var $formGroup = $(this).closest('.form-group');
+                var $multipleFormGroup = $formGroup.closest('.multiple-form-group');
+                var $formGroupClone = $formGroup.clone();
+
+                $(this)
+                    .toggleClass('btn-default btn-add btn-danger btn-remove')
+                    .html('–');
+
+                $formGroupClone.find('input').val('');
+                $formGroupClone.insertAfter($formGroup);
+
+                var $lastFormGroupLast = $multipleFormGroup.find('.form-group:last');
+                if ($multipleFormGroup.data('max') <= countFormGroup($multipleFormGroup)) {
+                    $lastFormGroupLast.find('.btn-add').attr('disabled', true);
+                }
+            };
+
+            var removeFormGroup = function (event) {
+                event.preventDefault();
+
+                var $formGroup = $(this).closest('.form-group');
+                var $multipleFormGroup = $formGroup.closest('.multiple-form-group');
+
+                var $lastFormGroupLast = $multipleFormGroup.find('.form-group:last');
+                if ($multipleFormGroup.data('max') >= countFormGroup($multipleFormGroup)) {
+                    $lastFormGroupLast.find('.btn-add').attr('disabled', false);
+                }
+
+                $formGroup.remove();
+            };
+
+            var countFormGroup = function ($form) {
+                return $form.find('.form-group').length;
+            };
+
+            $(document).on('click', '.btn-add', addFormGroup);
+            $(document).on('click', '.btn-remove', removeFormGroup);
+
+        });
+    })(jQuery);
+
+    $(function () {
+
+        $('#registration-form').on('submit', function (e) {
+
+            if (!e.isDefaultPrevented()) {
+                var url = "register";
+
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: $(this).serialize(),
+                    success: function (data) {
+                        var jsonResponse = JSON.parse(data);
+                        var responseType = jsonResponse.type;
+                        var messageText = jsonResponse.message;
+
+                        var alertBox;
+                        if (responseType === "SUCCESS") {
+                            alertBox = '<div class="alert alert-success alert-dismissable">' +
+                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> ' +
+                                '<strong>Success! </strong>' + messageText + '</div>';
+
+                        } else if (responseType === "ERROR") {
+                            alertBox = '<div class="alert alert-danger alert-dismissable">' +
+                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> ' +
+                                '<strong>Error: </strong>' + messageText + '. Please try again.</div>';
+                        }
+                        if (alertBox) {
+                            $('#registration-form').find('.messages').html(alertBox);
+                        }
+                    }
+                });
+                return false;
+            }
+        })
+    });
+</script>
+</body>
+</html>

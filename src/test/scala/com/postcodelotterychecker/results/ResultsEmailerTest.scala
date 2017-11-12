@@ -1,5 +1,6 @@
 package com.postcodelotterychecker.results
 
+import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
@@ -9,6 +10,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.util.Random
 
 class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers {
+
+  val emailerTestConfig = ConfigLoader.defaultConfig.emailerConfig
 
   val scenarios = postcodeSubscriberScenarios ++
     dinnerSubscriberScenarios ++
@@ -22,6 +25,7 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
       it should s"Send correct results emails to single clients for ${scenario.description}" in new ResultsEmailer {
 
         override val emailClient = new StubEmailClient
+        override val emailerConfig = emailerTestConfig
 
         val resultsData: Map[Subscriber, SubscriberResults] = Map(scenario.subscriber -> scenarioToSubscriberResults(scenario))
         sendEmails(resultsData).unsafeRunSync()
@@ -56,6 +60,8 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
                   .stripMargin
             )
           } else emailSent.body should not include s"**${competition.name}**"
+
+          emailSent.body should include (scenario.subscriber.uuid)
         }
       }
     }
@@ -65,6 +71,7 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
       val scenariosWithDistinctEmails = scenarios.map(x => x.copy(subscriber = x.subscriber.copy(email = s"${Random.alphanumeric.take(10).mkString}@gmail.com")))
 
       override val emailClient = new StubEmailClient
+      override val emailerConfig = emailerTestConfig
 
       val resultsData: Map[Subscriber, SubscriberResults] =
         scenariosWithDistinctEmails.map(scenario => scenario.subscriber -> scenarioToSubscriberResults(scenario)).toMap
@@ -102,9 +109,11 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
                   .stripMargin
             )
           } else emailSent.body should not include s"**${competition.name}**"
+          emailSent.body should include (scenario.subscriber.uuid)
         }
       }
-  }
+
+    }
 
   def scenarioToSubscriberResults(scenario: Scenario): SubscriberResults = {
     def postcodeResult(postcodesWatching: List[Postcode]) = SubscriberResult(

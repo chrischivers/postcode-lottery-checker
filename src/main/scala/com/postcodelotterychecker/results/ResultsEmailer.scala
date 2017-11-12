@@ -1,6 +1,7 @@
 package com.postcodelotterychecker.results
 
 import cats.effect.IO
+import com.postcodelotterychecker.EmailerConfig
 import com.postcodelotterychecker.models.Competitions.Competition
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
 import com.postcodelotterychecker.models.Subscriber
@@ -8,6 +9,7 @@ import com.postcodelotterychecker.models.Subscriber
 trait ResultsEmailer {
 
   val emailClient: EmailClient
+  val emailerConfig: EmailerConfig
 
   def sendEmails(resultsData: Map[Subscriber, SubscriberResults]): IO[Int] = IO {
 
@@ -17,7 +19,7 @@ trait ResultsEmailer {
       val emailBody =
         s"""
            |
-           |TODAYS RESULTS FOR ${subscriber.email}
+           |TODAY'S RESULTS FOR ${subscriber.email}
            |
            |$subject
            |
@@ -26,6 +28,8 @@ trait ResultsEmailer {
            |${subscriberResults.surveyDrawResult.fold("")(sdr => generateResultsBlock(sdr))}
            |${subscriberResults.dinnerResult.fold("")(dr => generateResultsBlock(dr))}
            |${subscriberResults.emojiResult.fold("")(er => generateResultsBlock(er))}
+           |
+           |<a href="${emailerConfig.baseSubscribeUrl}/register/remove?uuid=${subscriber.uuid}">Unsubscribe here</a>
            |
      """.stripMargin
 

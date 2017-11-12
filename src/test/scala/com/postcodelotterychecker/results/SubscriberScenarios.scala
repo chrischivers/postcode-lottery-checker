@@ -1,5 +1,7 @@
 package com.postcodelotterychecker.results
 
+import java.util.UUID
+
 import cats.effect.IO
 import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.models.Competitions._
@@ -21,6 +23,7 @@ trait SubscriberScenarios {
   val defaultWinningEmojiSet = Set(Emoji("aaaaa"), Emoji("bbbbb"), Emoji("ccccc"), Emoji("ddddd"), Emoji("eeeee"))
 
   val defaultNonWinningSubscriber = Subscriber(
+    uuid = UUID.randomUUID().toString,
     email = "default-subscriber@email.com",
     postcodesWatching = Some(List(Postcode("XYZ123"))),
     dinnerUsersWatching = Some(List(DinnerUserName("user3"))),

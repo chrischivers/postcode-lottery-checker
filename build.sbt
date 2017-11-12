@@ -25,19 +25,31 @@ libraryDependencies ++= Seq(
   "com.github.cb372" %% "scalacache-guava" % "0.10.0",
   "org.typelevel" %% "cats-effect" % "0.4",
   "com.github.etaty" %% "rediscala" % "1.8.0",
-  "org.mockito" % "mockito-core" % "2.11.0")
+  "com.github.mauricio" % "postgresql-async_2.12" % "0.2.21",
+  "org.mockito" % "mockito-core" % "2.11.0",
+  "commons-validator" % "commons-validator" % "1.6"
+)
 
 
-val circeVersion = "0.8.0"
+val circeVersion = "0.9.0-M1"
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
+val http4sVersion = "0.18.0-M1"
+libraryDependencies ++= Seq(
+  "org.http4s" %% "http4s-dsl",
+  "org.http4s" %% "http4s-blaze-server",
+  "org.http4s" %% "http4s-blaze-client",
+  "org.http4s" %% "http4s-circe"
+).map(_ % http4sVersion)
+
 
 mainClass in assembly := Some("com.postcodelotterychecker.Main")
 test in assembly := {}
+parallelExecution in Test := false
 
 //lazy val commonSettings = Seq(
 //  version := "1.0",
