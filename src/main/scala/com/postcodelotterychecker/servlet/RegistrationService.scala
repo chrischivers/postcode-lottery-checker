@@ -3,33 +3,29 @@ package com.postcodelotterychecker.servlet
 
 import java.util.UUID
 
+import cats.data.Validated._
 import cats.data.ValidatedNel
 import cats.effect.IO
+import cats.implicits._
 import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.db.SubscriberSchema
 import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
 import com.typesafe.scalalogging.StrictLogging
+import io.circe.generic.auto._
+import io.circe.syntax._
+import org.apache.commons.validator.routines.EmailValidator
 import org.http4s.dsl._
 import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.util.StreamApp
 import org.http4s.{Method, _}
-import cats.syntax.either._
-import io.circe.syntax._
 
 import scala.concurrent.ExecutionContext
 import scala.util.Properties.envOrNone
-import cats.data._
-import io.circe.generic.auto._
-import cats.data.Validated._
-import cats.implicits._
-import org.apache.commons.validator.routines.EmailValidator
 
 case class JsonResponse(`type`: String, message: String)
 
 class RegistrationService(subscribersTable: SubscribersTable)(implicit executionContext: ExecutionContext) extends StrictLogging {
-
-  //  implicit val strategy = Strategy.fromExecutionContext(executionContext)
 
   object UUIDQueryParameter extends QueryParamDecoderMatcher[String]("uuid")
 
