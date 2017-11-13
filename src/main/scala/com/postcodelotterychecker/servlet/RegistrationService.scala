@@ -69,7 +69,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
             .flatMap {
               result =>
                 if (result.rowsAffected == 0) Ok(JsonResponse("ERROR", s"E: Unable to register ${subscriber.uuid}. Something has gone wrong...").asJson.noSpaces)
-                else Ok(JsonResponse("SUCCESS", s"Successfully registered $email").asJson.noSpaces)
+                else Ok(JsonResponse("SUCCESS", s"Successfully registered ${subscriber.email}").asJson.noSpaces)
             }
         }
       }
