@@ -139,7 +139,7 @@ object RegistrationService extends StreamApp[IO] with StrictLogging {
   val subscribersTable = new SubscribersTable(sqlDB, SubscriberSchema(), createNewTable = false)
 
   val registrationService = new RegistrationService(subscribersTable)
-  val port: Int = envOrNone("HTTP_PORT") map (_.toInt) getOrElse 8080
+  val port: Int = envOrNone("HTTP_PORT") map (_.toInt) getOrElse 8082
   val ip: String = "0.0.0.0"
 
   override def stream(args: List[String], requestShutdown: IO[Unit]) = {
