@@ -33,7 +33,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
   private val supportedAssetTypes = List("css", "js", "images")
 
   val service = HttpService[IO] {
-    case request@Method.GET -> Root / "registration" =>
+    case request@Method.GET -> Root =>
       StaticFile.fromResource("/static/html/registration.html", Some(request))
         .getOrElseF(NotFound())
 
