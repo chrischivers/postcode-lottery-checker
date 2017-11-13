@@ -6,6 +6,7 @@ import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
 import com.postcodelotterychecker.servlet.RegistrationService
+import com.postcodelotterychecker.servlet.ServletTypes.{EveryDay, NotifyWhen}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, fixture}
 
@@ -68,10 +69,11 @@ class DBTest extends fixture.FlatSpec with ScalaFutures with Matchers {
   def generateSubscriber(
                           uuid: String = UUID.randomUUID().toString,
                           email: String = "test@gmail.com",
+                          notifyWhen: NotifyWhen = EveryDay,
                           postcodesWatching: Option[List[Postcode]] = Some(List(Postcode("ABC123"), Postcode("BCD234"))),
                           dinnerUsersWatching: Option[List[DinnerUserName]] = Some(List(DinnerUserName("User1"), DinnerUserName("User2"))),
                           emojiSetsWatching: Option[List[Set[Emoji]]] = Some(List(Set(Emoji("aaaaa"), Emoji("bbbbb"), Emoji("ccccc"), Emoji("ddddd"), Emoji("eeeee"))))
                         ): Subscriber =
-    Subscriber(uuid, email, postcodesWatching, dinnerUsersWatching, emojiSetsWatching)
+    Subscriber(uuid, email, notifyWhen, postcodesWatching, dinnerUsersWatching, emojiSetsWatching)
 
 }

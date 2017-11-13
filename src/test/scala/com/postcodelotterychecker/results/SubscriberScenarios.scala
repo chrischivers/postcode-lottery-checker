@@ -6,6 +6,7 @@ import cats.effect.IO
 import com.postcodelotterychecker.caching.RedisResultCache
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
+import com.postcodelotterychecker.servlet.ServletTypes.EveryDay
 
 import scala.util.Random
 
@@ -25,6 +26,7 @@ trait SubscriberScenarios {
   val defaultNonWinningSubscriber = Subscriber(
     uuid = UUID.randomUUID().toString,
     email = "default-subscriber@email.com",
+    notifyWhen = EveryDay,
     postcodesWatching = Some(List(Postcode("XYZ123"))),
     dinnerUsersWatching = Some(List(DinnerUserName("user3"))),
     emojiSetsWatching = Some(List(Set(Emoji("aaaaa"), Emoji("wwwww"), Emoji("xxxxx"), Emoji("yyyyy"), Emoji("zzzzz"))))

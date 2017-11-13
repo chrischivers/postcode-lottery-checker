@@ -2,12 +2,12 @@ package com.postcodelotterychecker.servlet
 
 import java.net.URLEncoder
 import java.util.UUID
-
 import cats.effect.IO
 import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.db.SubscriberSchema
 import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
+import com.postcodelotterychecker.servlet.ServletTypes.{EveryDay, JsonResponse, NotifyWhen, OnlyWhenWon}
 import org.http4s.{Method, Request, Uri}
 import org.http4s.client.Client
 import org.scalatest.concurrent.ScalaFutures
@@ -68,6 +68,7 @@ class RegistrationServiceTest extends fixture.FlatSpec with ScalaFutures with Ma
   it should "persist subscriber to DB" in { f =>
 
     val subscriberEmail = "subscriber1@gmail.com"
+    val notifyWhen = OnlyWhenWon
     val postcodesWatching = List("AB18SH")
     val dinnerUsersWatching = List("DinnerUser1")
     val emojiSetsWatching = List(Set("aaaaa", "bbbbb", "ccccc", "ddddd", "eeeee"))
@@ -75,11 +76,12 @@ class RegistrationServiceTest extends fixture.FlatSpec with ScalaFutures with Ma
     val request = Request[IO](
       method = Method.POST,
       uri = Uri.unsafeFromString("/register")
-    ).withBody(generateIncomingBody(subscriberEmail, postcodesWatching, dinnerUsersWatching, emojiSetsWatching))
+    ).withBody(generateIncomingBody(subscriberEmail, notifyWhen, postcodesWatching, dinnerUsersWatching, emojiSetsWatching))
     f.httpClient.status(request).unsafeRunSync().code shouldBe 200
     val resultsFromDB = f.subscribersTable.getSubscribers().unsafeRunSync()
     resultsFromDB should have size 1
     resultsFromDB.head.email shouldBe subscriberEmail
+    resultsFromDB.head.notifyWhen shouldBe notifyWhen
     resultsFromDB.head.postcodesWatching shouldBe Some(postcodesWatching.map(Postcode))
     resultsFromDB.head.dinnerUsersWatching shouldBe Some(dinnerUsersWatching.map(DinnerUserName))
     resultsFromDB.head.emojiSetsWatching shouldBe Some(emojiSetsWatching.map(_.map(Emoji)))
@@ -143,10 +145,12 @@ class RegistrationServiceTest extends fixture.FlatSpec with ScalaFutures with Ma
   }
 
   def generateIncomingBody(emailAddress: String = "test@gmail.com",
+                           notifyWhen: NotifyWhen = EveryDay,
                            postcodesWatching: List[String] = List("ABC123", "BCD234"),
                            dinnerUsersWatching: List[String] = List("TestUser1", "TestUser2"),
                            emojiSetsWatching: List[Set[String]] = List(Set("aaaaa", "bbbbb", "ccccc", "ddddd", "eeeee"))) = {
     s"emailAddress=${URLEncoder.encode(emailAddress, "UTF-8")}" +
+    s"&whenToNotify=${notifyWhen.value}" +
     s"${postcodesWatching.map{postcode =>
       s"&postcodesWatching%5B%5D=${URLEncoder.encode(postcode, "UTF-8")}"
     }.mkString}" +
@@ -167,9 +171,10 @@ class RegistrationServiceTest extends fixture.FlatSpec with ScalaFutures with Ma
   def generateSubscriber(
                           uuid: String = UUID.randomUUID().toString,
                           email: String = "test@gmail.com",
+                          notifyWhen: NotifyWhen = EveryDay,
                           postcodesWatching: Option[List[Postcode]] = Some(List(Postcode("ABC123"), Postcode("BCD234"))),
                           dinnerUsersWatching: Option[List[DinnerUserName]] = Some(List(DinnerUserName("User1"), DinnerUserName("User2"))),
                           emojiSetsWatching: Option[List[Set[Emoji]]] = Some(List(Set(Emoji("aaaaa"), Emoji("bbbbb"), Emoji("ccccc"), Emoji("ddddd"), Emoji("eeeee"))))
                         ): Subscriber =
-    Subscriber(uuid, email, postcodesWatching, dinnerUsersWatching, emojiSetsWatching)
+    Subscriber(uuid, email, notifyWhen, postcodesWatching, dinnerUsersWatching, emojiSetsWatching)
 }

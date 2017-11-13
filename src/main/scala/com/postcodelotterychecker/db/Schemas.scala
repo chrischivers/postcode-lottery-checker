@@ -8,6 +8,7 @@ case class SubscriberSchema(
                                   tableName: String = "subscribers",
                                   userId: String = "user_id",
                                   email: String = "email",
+                                  notifyWhen: String = "notify_when",
                                   postcodesWatching: String = "postcodes_watching",
                                   dinnerUsersWatching: String = "dinner_users_watching",
                                   emojisWatching: String = "emojis_watching",

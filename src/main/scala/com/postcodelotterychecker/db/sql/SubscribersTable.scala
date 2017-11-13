@@ -6,6 +6,7 @@ import com.github.mauricio.async.db.QueryResult
 import com.github.mauricio.async.db.postgresql.PostgreSQLConnection
 import com.postcodelotterychecker.db.SubscriberSchema
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
+import com.postcodelotterychecker.servlet.ServletTypes.NotifyWhen
 import io.circe.parser._
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -33,6 +34,7 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
            |${schema.tableName} (
            |    ${schema.userId} varchar NOT NULL,
            |    ${schema.email} varchar NOT NULL,
+           |    ${schema.notifyWhen} varchar NOT NULL,
            |    ${schema.postcodesWatching} text,
            |    ${schema.dinnerUsersWatching} text,
            |    ${schema.emojisWatching} text,
@@ -47,13 +49,14 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
     val dBSubscriber = subscriber.toDB
     val statement =
       s"INSERT INTO ${schema.tableName} " +
-        s"(${schema.userId}, ${schema.email}, ${schema.postcodesWatching}, " +
+        s"(${schema.userId}, ${schema.email}, ${schema.notifyWhen}, ${schema.postcodesWatching}, " +
         s"${schema.dinnerUsersWatching}, ${schema.emojisWatching}, ${schema.lastUpdated}) " +
-        "VALUES (?,?,?,?,?,'now')"
+        "VALUES (?,?,?,?,?,?,'now')"
 
     IO.fromFuture(Eval.now(db.connectionPool.sendPreparedStatement(statement,
       List(dBSubscriber.uuid,
         dBSubscriber.email,
+        dBSubscriber.notifyWhen,
         dBSubscriber.postcodesWatching.asJson.noSpaces,
         dBSubscriber.dinnerUsersWatching.asJson.noSpaces,
         dBSubscriber.emojiSetsWatching.asJson.noSpaces))))
@@ -80,6 +83,7 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
         case Some(resultSet) => resultSet.map(res => {
           val userId = res(schema.userId).asInstanceOf[String]
           val email = res(schema.email).asInstanceOf[String]
+          val notifyWhen = res(schema.notifyWhen).asInstanceOf[String]
           val postcodesWatching = noneIfNullString(res(schema.postcodesWatching).asInstanceOf[String])
           val dinnerUsersWatching = noneIfNullString(res(schema.dinnerUsersWatching).asInstanceOf[String])
           val emojiSetsWatching = noneIfNullString(res(schema.emojisWatching).asInstanceOf[String])
@@ -88,6 +92,7 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
           Subscriber(
             userId,
             email,
+            NotifyWhen.fromString(notifyWhen),
             parseAndDecodePostcodesWatching(postcodesWatching),
             parseAndDecodeDinnerUsers(dinnerUsersWatching),
             parseAndDecodeEmojiSetsWatching(emojiSetsWatching))

@@ -2,10 +2,12 @@ package com.postcodelotterychecker.models
 
 import java.util.UUID
 
+import com.postcodelotterychecker.servlet.ServletTypes.NotifyWhen
 import io.circe._
 
 case class Subscriber(uuid: String,
                       email: String,
+                      notifyWhen: NotifyWhen,
                       postcodesWatching: Option[List[Postcode]],
                       dinnerUsersWatching: Option[List[DinnerUserName]],
                       emojiSetsWatching: Option[List[Set[Emoji]]]) {
@@ -13,13 +15,14 @@ case class Subscriber(uuid: String,
   def toDB: DBSubscriber = DBSubscriber(
     uuid,
     email,
+    notifyWhen.value,
     postcodesWatching.map(_.map(_.value)),
     dinnerUsersWatching.map(_.map(_.value)),
     emojiSetsWatching.map(_.map(_.map(_.id).toList)))
 }
 
 
-case class DBSubscriber(uuid: String, email: String, postcodesWatching: Option[List[String]], dinnerUsersWatching: Option[List[String]], emojiSetsWatching: Option[List[List[String]]])
+case class DBSubscriber(uuid: String, email: String, notifyWhen: String, postcodesWatching: Option[List[String]], dinnerUsersWatching: Option[List[String]], emojiSetsWatching: Option[List[List[String]]])
 
 //object Subscriber {
 //  implicit val decodeSubscriber: Decoder[Subscriber] = new Decoder[Subscriber] {

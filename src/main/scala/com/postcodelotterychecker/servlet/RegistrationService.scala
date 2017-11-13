@@ -2,6 +2,7 @@ package com.postcodelotterychecker.servlet
 
 
 import java.util.UUID
+
 import cats.data.Validated._
 import cats.data.ValidatedNel
 import cats.effect.IO
@@ -10,6 +11,7 @@ import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.db.SubscriberSchema
 import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
+import com.postcodelotterychecker.servlet.ServletTypes.{EveryDay, JsonResponse, NotifyWhen, OnlyWhenWon}
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -21,8 +23,6 @@ import org.http4s.{Method, _}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Properties.envOrNone
-
-case class JsonResponse(`type`: String, message: String)
 
 class RegistrationService(subscribersTable: SubscribersTable)(implicit executionContext: ExecutionContext) extends StrictLogging {
 
@@ -52,11 +52,17 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
         val emojiSetsWatching = (emojiSetsWatchingA, emojiSetsWatchingB, emojiSetsWatchingC, emojiSetsWatchingD, emojiSetsWatchingE)
           .mapN(Set(_, _, _, _, _)).map(_.map(Emoji))
 
+        val notifyWhen: NotifyWhen = m.getFirst("whenToNotify") match {
+          case Some("EVERY_DAY") => EveryDay
+          case Some("ONLY_WHEN_WON") => OnlyWhenWon
+          case _ => EveryDay
+        }
 
-        validateInput(email, postcodesWatching, dinnerUsersWatching, emojiSetsWatching).toEither match {
+
+        validateInput(email, notifyWhen, postcodesWatching, dinnerUsersWatching, emojiSetsWatching).toEither match {
           case Left(errors) =>
-            logger.info(s"Errors validating input [${errors.toList.mkString(",")}]")
-            Ok(JsonResponse("ERROR", errors.toList.mkString(",")).asJson.noSpaces)
+            logger.info(s"Errors validating input [${errors.toList.mkString(", ")}]")
+            Ok(JsonResponse("ERROR", errors.toList.mkString(", ")).asJson.noSpaces)
           case Right(subscriber) =>
             logger.debug(s"Successfully validated $subscriber")
             subscribersTable.insertSubscriber(subscriber)
@@ -86,13 +92,13 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
     else Some(list)
   }
 
-  def validateInput(email: Option[String], postcodesWatching: List[Postcode], dinnerUsersWatching: List[DinnerUserName], emojiSetsWatching: List[Set[Emoji]]): ValidationResult[Subscriber] = {
+  def validateInput(email: Option[String], notifyWhen: NotifyWhen, postcodesWatching: List[Postcode], dinnerUsersWatching: List[DinnerUserName], emojiSetsWatching: List[Set[Emoji]]): ValidationResult[Subscriber] = {
 
     (validateEmail(email),
       validatePostcodes(postcodesWatching),
     validateEmojiSets(emojiSetsWatching)).mapN { case (validatedEmail, validatedPostcodesWatching, validatedEmojiSetsWatching) =>
       val uuid = UUID.randomUUID().toString
-      Subscriber(uuid, validatedEmail, listToOption(validatedPostcodesWatching), listToOption(dinnerUsersWatching), listToOption(validatedEmojiSetsWatching))
+      Subscriber(uuid, validatedEmail, notifyWhen, listToOption(validatedPostcodesWatching), listToOption(dinnerUsersWatching), listToOption(validatedEmojiSetsWatching))
     }
   }
 
@@ -110,7 +116,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
     else {
       val trimmedPostcodes = postcodeList.map(_.trim)
       if (trimmedPostcodes.forall(_.isValid)) trimmedPostcodes.validNel
-      else "Invalid postcodes".invalidNel
+      else "Invalid postcode format".invalidNel
     }
   }
 
@@ -119,7 +125,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
     else {
       val trimmedEmojiSets = emojiSetsList.map(_.map(x => Emoji(x.id.trim)))
       if (trimmedEmojiSets.forall(_.forall(_ != ""))) trimmedEmojiSets.validNel
-      else "Invalid emoji sets".invalidNel
+      else "Invalid emoji set(s)".invalidNel
     }
   }
 }

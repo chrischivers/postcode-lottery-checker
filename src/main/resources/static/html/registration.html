@@ -10,63 +10,60 @@
 
 <div class="container">
     <div class="row">
-        <div class="col-md-6 col-md-offset-3">
-            <h2>Free Postcode Lottery Checker: Registration</h2>
+        <div class="col-md-8 col-md-offset-2">
+            <h2>Free Postcode Lottery Checker</h2>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <p><strong>This service automatically checks the Free Postcode Lottery each day to see if you have won</strong></p>
+                    <p>Enter one or more postcodes to watch and an email to which notifications can be sent.</p>
+                    Postcodes are checked against the following:
+                    <ul>
+                        <li>Postcode Lottery (Main Draw)</li>
+                        <li>Stackpot Lottery</li>
+                        <li>Survey Draw</li>
+                    </ul>
+
+                </div>
+            </div>
 
             <form id="registration-form">
                 <div class="messages"></div>
-                <div class="form-group ">
-                    <label for="email">Email address:</label>
-                    <input type="email" name="emailAddress" class="form-control" id="email"/>
-                </div>
-
-                <div class="form-group">
-                    <label>Postcode(s) to watch:</label>
-                    <div class="form-group input-group">
-                        <input type="text" name="postcodesWatching[]" class="form-control">
-                        <span class="input-group-btn">
-                            <button type="button" class="btn btn-default btn-add">+</button>
-                        </span>
+                <div class="form-group row">
+                    <div class="col-xs-6">
+                        <label for="email">Email address:</label>
+                        <input type="email" name="emailAddress" class="form-control" id="email"/>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Dinner user(s) to watch:</label>
-                    <div class="form-group input-group">
-                        <input type="text" name="dinnerUsersWatching[]" class="form-control"/>
-                        <span class="input-group-btn">
+                <div class="form-group row">
+                    <div class="col-xs-4">
+                        <label>Postcode(s) to watch:</label>
+                        <div class="form-group input-group">
+                            <input type="text" name="postcodesWatching[]" class="form-control">
+                            <span class="input-group-btn">
                             <button type="button" class="btn btn-default btn-add">+</button>
                         </span>
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label>Emoji set(s) to watch:</label>
-                    <div class="form-group input-group">
-                        <div class="col-xs-2">
-                            <label>Set </label>
+                <div class="form-group row">
+                    <div class="col-xs-8">
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input class="form-check-input" type="radio" name="whenToNotify" value="EVERY_DAY"
+                                       checked>
+                                Send notification of results each day
+                            </label>
                         </div>
-                        <div class="col-xs-2">
-                            <input type="text" name="emojiSetsWatchingA[]" class="form-control"/>
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input class="form-check-input" type="radio" name="whenToNotify"
+                                       value="ONLY_WHEN_WON">
+                                Send notification of results only if won
+                            </label>
                         </div>
-                        <div class="col-xs-2">
-                            <input type="text" name="emojiSetsWatchingB[]" class="form-control"/>
-                        </div>
-                        <div class="col-xs-2">
-                            <input type="text" name="emojiSetsWatchingC[]" class="form-control"/>
-                        </div>
-                        <div class="col-xs-2">
-                            <input type="text" name="emojiSetsWatchingD[]" class="form-control"/>
-                        </div>
-                        <div class="col-xs-2">
-                            <input type="text" name="emojiSetsWatchingE[]" class="form-control"/>
-                        </div>
-                        <span class="input-group-btn">
-                            <button type="button" class="btn btn-default btn-add">+</button>
-                        </span>
                     </div>
                 </div>
-
                 <button type="submit" class="btn btn-default">Submit</button>
             </form>
         </div>
@@ -141,13 +138,13 @@
                         var alertBox;
                         if (responseType === "SUCCESS") {
                             alertBox = '<div class="alert alert-success alert-dismissable">' +
-                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> ' +
+                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>' +
                                 '<strong>Success! </strong>' + messageText + '</div>';
 
                         } else if (responseType === "ERROR") {
                             alertBox = '<div class="alert alert-danger alert-dismissable">' +
-                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> ' +
-                                '<strong>Error: </strong>' + messageText + '. Please try again.</div>';
+                                '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>' +
+                                '<strong>Error: </strong>' + messageText + '. <br/>Please try again.</div>';
                         }
                         if (alertBox) {
                             $('#registration-form').find('.messages').html(alertBox);

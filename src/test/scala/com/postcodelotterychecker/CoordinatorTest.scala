@@ -8,7 +8,9 @@ import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models._
 import com.postcodelotterychecker.results._
+import com.postcodelotterychecker.servlet.ServletTypes.EveryDay
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
@@ -86,6 +88,7 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
     val subscriber1 = Subscriber(
       uuid = UUID.randomUUID().toString,
       email = "singlePostcode@test.com",
+      notifyWhen = EveryDay,
       postcodesWatching = Some(List(Postcode("ABC123"))),
       dinnerUsersWatching = None,
       emojiSetsWatching = None)
@@ -93,6 +96,7 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
     val subscriber2 = Subscriber(
       uuid = UUID.randomUUID().toString,
       email = "singleDinnerUser@test.com",
+      notifyWhen = EveryDay,
       postcodesWatching = None,
       dinnerUsersWatching = Some(List(DinnerUserName("TestUser1"))),
       emojiSetsWatching = None)
@@ -100,6 +104,7 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
     val subscriber3= Subscriber(
       uuid = UUID.randomUUID().toString,
       email = "singleEmojiSet@test.com",
+      notifyWhen = EveryDay,
       postcodesWatching = None,
       dinnerUsersWatching = None,
       emojiSetsWatching = Some(List(Set("eeeee","ccccc","bbbbb","ddddd","aaaaa").map(Emoji))))
@@ -107,6 +112,7 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
     val subscriber4= Subscriber(
       uuid = UUID.randomUUID().toString,
       email = "singleEverything@test.com",
+      notifyWhen = EveryDay,
       postcodesWatching = Some(List(Postcode("ABC123"))),
       dinnerUsersWatching = Some(List(DinnerUserName("TestUser1"))),
       emojiSetsWatching = Some(List(Set("eeeee","ccccc","bbbbb","ddddd","aaaaa").map(Emoji))))
@@ -114,6 +120,7 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
     val subscriber5 = Subscriber(
       uuid = UUID.randomUUID().toString,
       email = "\"multipleEverything@test.com",
+      notifyWhen = EveryDay,
       postcodesWatching = Some(List(Postcode("ABC123"), Postcode("BCD234"))),
       dinnerUsersWatching = Some(List(DinnerUserName("TestUser1"), DinnerUserName("TestUser2"))),
       emojiSetsWatching = Some(List(
