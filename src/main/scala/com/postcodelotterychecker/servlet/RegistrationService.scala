@@ -2,7 +2,6 @@ package com.postcodelotterychecker.servlet
 
 
 import java.util.UUID
-
 import cats.data.Validated._
 import cats.data.ValidatedNel
 import cats.effect.IO
