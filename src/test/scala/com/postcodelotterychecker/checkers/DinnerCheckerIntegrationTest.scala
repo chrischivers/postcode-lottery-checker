@@ -32,8 +32,7 @@ trait DinnerCheckerTestSetup {
   }
 }
 
-
-class DinnerCheckerTest extends FlatSpec with Matchers {
+class DinnerCheckerIntegrationTest extends FlatSpec with Matchers {
 
   it should "identify winning users from webpage" in new DinnerCheckerTestSetup {
 

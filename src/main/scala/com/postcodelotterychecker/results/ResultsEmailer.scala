@@ -1,38 +1,45 @@
 package com.postcodelotterychecker.results
 
 import cats.effect.IO
+import com.postcodelotterychecker.EmailerConfig
 import com.postcodelotterychecker.models.Competitions.Competition
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
 import com.postcodelotterychecker.models.Subscriber
+import com.postcodelotterychecker.servlet.ServletTypes.{EveryDay, OnlyWhenWon}
 
 trait ResultsEmailer {
 
   val emailClient: EmailClient
+  val emailerConfig: EmailerConfig
 
   def sendEmails(resultsData: Map[Subscriber, SubscriberResults]): IO[Int] = IO {
 
     resultsData.foldLeft(0) { case (acc, (subscriber, subscriberResults)) =>
       val competitionsWon: List[Competition] = wonAnyCompetitions(subscriberResults)
-      val subject = if (competitionsWon.isEmpty) "Sorry you have not won today" else s"Congratulations you have won ${competitionsWon.map(_.name).mkString(", ")}"
-      val emailBody =
-        s"""
-           |
-           |TODAYS RESULTS FOR ${subscriber.email}
-           |
-           |$subject
-           |
-           |${subscriberResults.postcodeResult.fold("")(pr => generateResultsBlock(pr))}
-           |${subscriberResults.stackpotResult.fold("")(spr => generateResultsBlock(spr))}
-           |${subscriberResults.surveyDrawResult.fold("")(sdr => generateResultsBlock(sdr))}
-           |${subscriberResults.dinnerResult.fold("")(dr => generateResultsBlock(dr))}
-           |${subscriberResults.emojiResult.fold("")(er => generateResultsBlock(er))}
-           |
+      if (competitionsWon.nonEmpty || subscriber.notifyWhen == EveryDay) {
+        val subject = if (competitionsWon.isEmpty) "Sorry you have not won today" else s"Congratulations you have won ${competitionsWon.map(_.name).mkString(", ")}"
+        val emailBody =
+          s"""
+             |
+             |TODAY'S RESULTS FOR ${subscriber.email}
+             |
+             |$subject
+             |
+             |${subscriberResults.postcodeResult.fold("")(pr => generateResultsBlock(pr))}
+             |${subscriberResults.stackpotResult.fold("")(spr => generateResultsBlock(spr))}
+             |${subscriberResults.surveyDrawResult.fold("")(sdr => generateResultsBlock(sdr))}
+             |${subscriberResults.dinnerResult.fold("")(dr => generateResultsBlock(dr))}
+             |${subscriberResults.emojiResult.fold("")(er => generateResultsBlock(er))}
+             |
+             |<a href="${emailerConfig.baseSubscribeUrl}/register/remove?uuid=${subscriber.uuid}">Unsubscribe here</a>
+             |
      """.stripMargin
 
-      val email = Email(subject, emailBody, subscriber.email)
+        val email = Email(subject, emailBody, subscriber.email)
 
-      emailClient.sendEmail(email)
-      acc + 1
+        emailClient.sendEmail(email)
+        acc + 1
+      } else acc
     }
   }
 

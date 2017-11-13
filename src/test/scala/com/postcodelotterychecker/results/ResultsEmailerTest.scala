@@ -1,14 +1,18 @@
 package com.postcodelotterychecker.results
 
+import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode, Subscriber}
+import com.postcodelotterychecker.servlet.ServletTypes.OnlyWhenWon
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.util.Random
 
 class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers {
+
+  val emailerTestConfig = ConfigLoader.defaultConfig.emailerConfig
 
   val scenarios = postcodeSubscriberScenarios ++
     dinnerSubscriberScenarios ++
@@ -17,25 +21,116 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
     emojiSubscriberScenarios ++
     multipleWinningScenarios
 
-    scenarios.foreach { scenario =>
+  scenarios.foreach { scenario =>
 
-      it should s"Send correct results emails to single clients for ${scenario.description}" in new ResultsEmailer {
+    it should s"Send correct results emails to single clients for ${scenario.description}" in new ResultsEmailer {
 
-        override val emailClient = new StubEmailClient
+      override val emailClient = new StubEmailClient
+      override val emailerConfig = emailerTestConfig
 
-        val resultsData: Map[Subscriber, SubscriberResults] = Map(scenario.subscriber -> scenarioToSubscriberResults(scenario))
-        sendEmails(resultsData).unsafeRunSync()
+      val resultsData: Map[Subscriber, SubscriberResults] = Map(scenario.subscriber -> scenarioToSubscriberResults(scenario))
+      sendEmails(resultsData).unsafeRunSync()
 
+      emailClient.emailsSent should have size 1
+      val emailSent = emailClient.emailsSent.head
+      emailSent.to shouldBe scenario.subscriber.email
+
+      val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
+      if (competitionsWon.isEmpty) {
+        emailSent.subject should include("Sorry you have not won today")
+      } else {
+        emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
+      }
+
+      List(PostcodeCompetition,
+        DinnerCompetition,
+        SurveyDrawCompetition,
+        StackpotCompetition,
+        EmojiCompetition).foreach { competition =>
+
+        val isWatching = competition match {
+          case PostcodeCompetition | SurveyDrawCompetition | StackpotCompetition => scenario.subscriber.postcodesWatching.isDefined
+          case DinnerCompetition => scenario.subscriber.dinnerUsersWatching.isDefined
+          case EmojiCompetition => scenario.subscriber.emojiSetsWatching.isDefined
+        }
+
+        if (isWatching) {
+          emailSent.body should include(
+            s"**${competition.name}**\n" +
+              s"Result: ${scenario.won.get(competition).fold("Not won")(_.fold("Unknown. Please check....")(if (_) "WON" else "Not won"))}"
+                .stripMargin
+          )
+        } else emailSent.body should not include s"**${competition.name}**"
+
+        emailSent.body should include(scenario.subscriber.uuid)
+      }
+    }
+  }
+
+  it should s"Send correct results emails to multiple clients" in new ResultsEmailer {
+
+    val scenariosWithDistinctEmails = scenarios.map(x => x.copy(subscriber = x.subscriber.copy(email = s"${Random.alphanumeric.take(10).mkString}@gmail.com")))
+
+    override val emailClient = new StubEmailClient
+    override val emailerConfig = emailerTestConfig
+
+    val resultsData: Map[Subscriber, SubscriberResults] =
+      scenariosWithDistinctEmails.map(scenario => scenario.subscriber -> scenarioToSubscriberResults(scenario)).toMap
+
+    sendEmails(resultsData).unsafeRunSync()
+
+    emailClient.emailsSent should have size scenariosWithDistinctEmails.size
+    scenariosWithDistinctEmails.foreach { scenario =>
+      val emailSent = emailClient.emailsSent.find(_.to == scenario.subscriber.email).get
+      emailSent.to shouldBe scenario.subscriber.email
+
+      val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
+      if (competitionsWon.isEmpty) {
+        emailSent.subject should include("Sorry you have not won today")
+      } else {
+        emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
+      }
+
+      List(PostcodeCompetition,
+        DinnerCompetition,
+        SurveyDrawCompetition,
+        StackpotCompetition,
+        EmojiCompetition).foreach { competition =>
+
+        val isWatching = competition match {
+          case PostcodeCompetition | SurveyDrawCompetition | StackpotCompetition => scenario.subscriber.postcodesWatching.isDefined
+          case DinnerCompetition => scenario.subscriber.dinnerUsersWatching.isDefined
+          case EmojiCompetition => scenario.subscriber.emojiSetsWatching.isDefined
+        }
+
+        if (isWatching) {
+          emailSent.body should include(
+            s"**${competition.name}**\n" +
+              s"Result: ${scenario.won.get(competition).fold("Not won")(_.fold("Unknown. Please check....")(if (_) "WON" else "Not won"))}"
+                .stripMargin
+          )
+        } else emailSent.body should not include s"**${competition.name}**"
+        emailSent.body should include(scenario.subscriber.uuid)
+      }
+    }
+  }
+
+  scenarios.foreach { scenario =>
+    it should s"only send results emails to those who won, if NotifyWhen is set to ONLY_WHEN_WON ${scenario.description}" in new ResultsEmailer {
+
+      override val emailClient = new StubEmailClient
+      override val emailerConfig = emailerTestConfig
+
+      val resultsData: Map[Subscriber, SubscriberResults] = Map(scenario.subscriber.copy(notifyWhen = OnlyWhenWon) -> scenarioToSubscriberResults(scenario))
+      sendEmails(resultsData).unsafeRunSync()
+
+      val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
+      if (scenario.won.toList.exists(_._2.contains(true))) {
         emailClient.emailsSent should have size 1
         val emailSent = emailClient.emailsSent.head
         emailSent.to shouldBe scenario.subscriber.email
+        emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
 
-        val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
-        if (competitionsWon.isEmpty) {
-          emailSent.subject should include("Sorry you have not won today")
-        } else {
-          emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
-        }
 
         List(PostcodeCompetition,
           DinnerCompetition,
@@ -56,55 +151,64 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
                   .stripMargin
             )
           } else emailSent.body should not include s"**${competition.name}**"
+
+          emailSent.body should include(scenario.subscriber.uuid)
         }
+      } else {
+        emailClient.emailsSent shouldBe empty
       }
     }
-
-    it should s"Send correct results emails to multiple clients" in new ResultsEmailer {
-
-      val scenariosWithDistinctEmails = scenarios.map(x => x.copy(subscriber = x.subscriber.copy(email = s"${Random.alphanumeric.take(10).mkString}@gmail.com")))
-
-      override val emailClient = new StubEmailClient
-
-      val resultsData: Map[Subscriber, SubscriberResults] =
-        scenariosWithDistinctEmails.map(scenario => scenario.subscriber -> scenarioToSubscriberResults(scenario)).toMap
-
-      sendEmails(resultsData).unsafeRunSync()
-
-      emailClient.emailsSent should have size scenariosWithDistinctEmails.size
-      scenariosWithDistinctEmails.foreach { scenario =>
-        val emailSent = emailClient.emailsSent.find(_.to == scenario.subscriber.email).get
-        emailSent.to shouldBe scenario.subscriber.email
-
-        val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
-        if (competitionsWon.isEmpty) {
-          emailSent.subject should include("Sorry you have not won today")
-        } else {
-          emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
-        }
-
-        List(PostcodeCompetition,
-          DinnerCompetition,
-          SurveyDrawCompetition,
-          StackpotCompetition,
-          EmojiCompetition).foreach { competition =>
-
-          val isWatching = competition match {
-            case PostcodeCompetition | SurveyDrawCompetition | StackpotCompetition => scenario.subscriber.postcodesWatching.isDefined
-            case DinnerCompetition => scenario.subscriber.dinnerUsersWatching.isDefined
-            case EmojiCompetition => scenario.subscriber.emojiSetsWatching.isDefined
-          }
-
-          if (isWatching) {
-            emailSent.body should include(
-              s"**${competition.name}**\n" +
-                s"Result: ${scenario.won.get(competition).fold("Not won")(_.fold("Unknown. Please check....")(if (_) "WON" else "Not won"))}"
-                  .stripMargin
-            )
-          } else emailSent.body should not include s"**${competition.name}**"
-        }
-      }
   }
+
+  it should s"Send correct results emails to multiple clients who won when NotifyWhen is set to ONLY_WHEN_WON" in new ResultsEmailer {
+
+    val scenariosWithDistinctEmails = scenarios.map(x => x.copy(subscriber = x.subscriber.copy(email = s"${Random.alphanumeric.take(10).mkString}@gmail.com")))
+
+    override val emailClient = new StubEmailClient
+    override val emailerConfig = emailerTestConfig
+
+    val resultsData: Map[Subscriber, SubscriberResults] =
+      scenariosWithDistinctEmails.map(scenario => scenario.subscriber.copy(notifyWhen = OnlyWhenWon) -> scenarioToSubscriberResults(scenario)).toMap
+
+    sendEmails(resultsData).unsafeRunSync()
+
+    val scenarionsWhereWon = scenariosWithDistinctEmails.filter(_.won.exists(_._2.contains(true)))
+    emailClient.emailsSent should have size scenarionsWhereWon.size
+    scenarionsWhereWon.foreach { scenario =>
+      val emailSent = emailClient.emailsSent.find(_.to == scenario.subscriber.email).get
+      emailSent.to shouldBe scenario.subscriber.email
+
+      val competitionsWon = scenario.won.toList.filter(_._2.contains(true))
+      if (competitionsWon.isEmpty) {
+        emailSent.subject should include("Sorry you have not won today")
+      } else {
+        emailSent.subject should include(s"Congratulations you have won ${competitionsWon.map(_._1.name).mkString(", ")}")
+      }
+
+      List(PostcodeCompetition,
+        DinnerCompetition,
+        SurveyDrawCompetition,
+        StackpotCompetition,
+        EmojiCompetition).foreach { competition =>
+
+        val isWatching = competition match {
+          case PostcodeCompetition | SurveyDrawCompetition | StackpotCompetition => scenario.subscriber.postcodesWatching.isDefined
+          case DinnerCompetition => scenario.subscriber.dinnerUsersWatching.isDefined
+          case EmojiCompetition => scenario.subscriber.emojiSetsWatching.isDefined
+        }
+
+        if (isWatching) {
+          emailSent.body should include(
+            s"**${competition.name}**\n" +
+              s"Result: ${scenario.won.get(competition).fold("Not won")(_.fold("Unknown. Please check....")(if (_) "WON" else "Not won"))}"
+                .stripMargin
+          )
+        } else emailSent.body should not include s"**${competition.name}**"
+        emailSent.body should include(scenario.subscriber.uuid)
+      }
+    }
+  }
+
 
   def scenarioToSubscriberResults(scenario: Scenario): SubscriberResults = {
     def postcodeResult(postcodesWatching: List[Postcode]) = SubscriberResult(

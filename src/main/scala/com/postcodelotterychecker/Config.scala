@@ -14,10 +14,11 @@ case class Config(postcodeCheckerConfig: CheckerConfig,
                   emojiCheckerConfig: CheckerConfig,
                   emailerConfig: EmailerConfig,
                   redisConfig: RedisConfig,
-                  resultsProcessorConfig: ResultsProcessorConfig)
+                  resultsProcessorConfig: ResultsProcessorConfig,
+                  postgresDBConfig: PostgresDBConfig)
 
 
-case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String, numberAttempts: Int, secondsBetweenAttempts: Int)
+case class EmailerConfig(fromAddress: String, smtpHost: String, smtpPort: Int, smtpUsername: String, smtpPassword: String, numberAttempts: Int, secondsBetweenAttempts: Int, baseSubscribeUrl: String)
 
 case class PostgresDBConfig(host: String, port: Int, username: String, password: String, dbName: String)
 
@@ -30,7 +31,7 @@ case class ResultsProcessorConfig(timeBetweenRetries: FiniteDuration, timeCutoff
 object ConfigLoader {
 
   private val defaultConfigFactory = ConfigFactory.load()
-  //  private val postgresDBParamsPrefix = "db.postgres."
+    private val postgresDBParamsPrefix = "db.postgres."
 
   val defaultConfig: Config = {
     Config(
@@ -77,7 +78,8 @@ object ConfigLoader {
         defaultConfigFactory.getString("email.smtpUsername"),
         defaultConfigFactory.getString("email.smtpPassword"),
         defaultConfigFactory.getInt("email.numberAttempts"),
-        defaultConfigFactory.getInt("email.secondsBetweenAttempts")
+        defaultConfigFactory.getInt("email.secondsBetweenAttempts"),
+        defaultConfigFactory.getString("email.baseSubscribeUrl")
       ),
       RedisConfig(
         defaultConfigFactory.getString("redis.host"),
@@ -88,6 +90,13 @@ object ConfigLoader {
       ResultsProcessorConfig(
         FiniteDuration(defaultConfigFactory.getDuration("resultsProcessor.timeBetweenRetries").toMillis, TimeUnit.MILLISECONDS),
         FiniteDuration(defaultConfigFactory.getDuration("resultsProcessor.timeCutoff").toMillis, TimeUnit.MILLISECONDS)
+      ),
+      PostgresDBConfig(
+        defaultConfigFactory.getString(postgresDBParamsPrefix + "host"),
+        defaultConfigFactory.getInt(postgresDBParamsPrefix + "port"),
+        defaultConfigFactory.getString(postgresDBParamsPrefix + "username"),
+        defaultConfigFactory.getString(postgresDBParamsPrefix + "password"),
+        defaultConfigFactory.getString(postgresDBParamsPrefix + "dbName")
       )
     )
   }

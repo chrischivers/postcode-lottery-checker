@@ -33,7 +33,7 @@ trait EmojiCheckerTestSetup {
 }
 
 
-class EmojiCheckerTest extends FlatSpec with Matchers {
+class EmojiCheckerIntegrationTest extends FlatSpec with Matchers {
 
  it should "identify winning emojis from webpage" in new EmojiCheckerTestSetup {
 
