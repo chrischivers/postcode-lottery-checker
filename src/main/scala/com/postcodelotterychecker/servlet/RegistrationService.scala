@@ -124,7 +124,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
     if (emojiSetsList.isEmpty) emojiSetsList.validNel
     else {
       val trimmedEmojiSets = emojiSetsList.map(_.map(x => Emoji(x.id.trim)))
-      if (trimmedEmojiSets.forall(_.forall(_ != ""))) trimmedEmojiSets.validNel
+      if (trimmedEmojiSets.forall(_.forall(_.id != ""))) trimmedEmojiSets.validNel
       else "Invalid emoji set(s)".invalidNel
     }
   }
