@@ -75,7 +75,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
       }
 
     case _@GET -> Root / "register" / "remove" :? UUIDQueryParameter(uuid) =>
-      subscribersTable.deleteSubscriber(uuid)
+      subscribersTable.makeSubscriberInactive(uuid)
         .flatMap {
           result =>
             if (result.rowsAffected == 0) Ok(JsonResponse("ERROR", s"Error. Id $uuid does not exist").asJson.noSpaces)

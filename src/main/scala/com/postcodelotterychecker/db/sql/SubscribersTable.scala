@@ -34,6 +34,7 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
            |${schema.tableName} (
            |    ${schema.userId} varchar NOT NULL,
            |    ${schema.email} varchar NOT NULL,
+           |    ${schema.active} boolean NOT NULL,
            |    ${schema.notifyWhen} varchar NOT NULL,
            |    ${schema.postcodesWatching} text,
            |    ${schema.dinnerUsersWatching} text,
@@ -49,13 +50,14 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
     val dBSubscriber = subscriber.toDB
     val statement =
       s"INSERT INTO ${schema.tableName} " +
-        s"(${schema.userId}, ${schema.email}, ${schema.notifyWhen}, ${schema.postcodesWatching}, " +
+        s"(${schema.userId}, ${schema.email}, ${schema.active}, ${schema.notifyWhen}, ${schema.postcodesWatching}, " +
         s"${schema.dinnerUsersWatching}, ${schema.emojisWatching}, ${schema.lastUpdated}) " +
-        "VALUES (?,?,?,?,?,?,'now')"
+        "VALUES (?,?,?,?,?,?,?,'now')"
 
     IO.fromFuture(Eval.now(db.connectionPool.sendPreparedStatement(statement,
       List(dBSubscriber.uuid,
         dBSubscriber.email,
+        true,
         dBSubscriber.notifyWhen,
         dBSubscriber.postcodesWatching.asJson.noSpaces,
         dBSubscriber.dinnerUsersWatching.asJson.noSpaces,
@@ -63,10 +65,11 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
 
   }
 
-  def deleteSubscriber(uuid: String): IO[QueryResult] = {
+  def makeSubscriberInactive(uuid: String): IO[QueryResult] = {
     val statement =
-      s"DELETE FROM ${schema.tableName} " +
-        s"WHERE ${schema.userId} = ?"
+      s"UPDATE ${schema.tableName} " +
+      s"SET ${schema.active} = false " +
+      s"WHERE ${schema.userId} = ?"
 
     IO.fromFuture(Eval.now(db.connectionPool.sendPreparedStatement(statement, List(uuid))))
   }
@@ -74,7 +77,8 @@ class SubscribersTable(val db: SqlDb[PostgreSQLConnection], val schema: Subscrib
   def getSubscribers(): IO[List[Subscriber]] = {
     val query =
       s"SELECT * " +
-        s"FROM ${schema.tableName}"
+        s"FROM ${schema.tableName} " +
+        s"WHERE ${schema.active} = true"
     IO.fromFuture(Eval.now(for {
       _ <- db.connectToDB
       queryResult <- db.connectionPool.sendPreparedStatement(query)

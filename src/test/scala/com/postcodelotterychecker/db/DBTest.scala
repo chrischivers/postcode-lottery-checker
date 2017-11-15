@@ -58,11 +58,11 @@ class DBTest extends fixture.FlatSpec with ScalaFutures with Matchers {
     subscribersFromDb should contain allElementsOf List(subscriber1, subscriber2)
   }
 
-  it should "delete subscribers from DB" in { f =>
+  it should "make subscribers inative in DB" in { f =>
     val subscriber = generateSubscriber(postcodesWatching = None)
     f.subscribersTable.insertSubscriber(subscriber).unsafeRunSync()
     f.subscribersTable.getSubscribers().unsafeRunSync() should have size 1
-    f.subscribersTable.deleteSubscriber(subscriber.uuid).unsafeRunSync()
+    f.subscribersTable.makeSubscriberInactive(subscriber.uuid).unsafeRunSync()
     f.subscribersTable.getSubscribers().unsafeRunSync() should have size 0
   }
 

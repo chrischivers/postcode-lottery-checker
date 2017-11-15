@@ -7,6 +7,7 @@ sealed trait Schema {
 case class SubscriberSchema(
                                   tableName: String = "subscribers",
                                   userId: String = "user_id",
+                                  active: String = "active",
                                   email: String = "email",
                                   notifyWhen: String = "notify_when",
                                   postcodesWatching: String = "postcodes_watching",

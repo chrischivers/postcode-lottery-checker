@@ -87,7 +87,7 @@ class RegistrationServiceTest extends fixture.FlatSpec with ScalaFutures with Ma
     resultsFromDB.head.emojiSetsWatching shouldBe Some(emojiSetsWatching.map(_.map(Emoji)))
   }
 
-  it should "delete subscriber from DB" in { f =>
+  it should "make subscriber inactive in DB if unsubscribers" in { f =>
     val subscriber = generateSubscriber()
     f.subscribersTable.insertSubscriber(subscriber).unsafeRunSync()
     f.subscribersTable.getSubscribers().unsafeRunSync() should have size 1
