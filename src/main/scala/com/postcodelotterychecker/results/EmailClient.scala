@@ -36,7 +36,7 @@ class DefaultEmailClient(emailerConfig: EmailerConfig) extends EmailClient with 
     message.setFrom(new InternetAddress(emailerConfig.fromAddress))
     message.setRecipient(javax.mail.Message.RecipientType.TO, new InternetAddress(email.to))
     message.setSubject(email.subject)
-    message.setText(email.body)
+    message.setText(email.body, "utf-8", "html")
 
     Utils.retry(emailerConfig.numberAttempts, emailerConfig.secondsBetweenAttempts) {
       logger.info(s"Sending email to ${email.to}")

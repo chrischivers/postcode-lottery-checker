@@ -1,6 +1,6 @@
 package com.postcodelotterychecker.results
 
-import com.postcodelotterychecker.ConfigLoader
+import com.postcodelotterychecker.{ConfigLoader, EmailerConfig}
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}
@@ -22,6 +22,7 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
     multipleWinningScenarios
 
   scenarios.foreach { scenario =>
+
 
     it should s"Send correct results emails to single clients for ${scenario.description}" in new ResultsEmailer {
 
@@ -249,4 +250,3 @@ class ResultsEmailerTest extends FlatSpec with SubscriberScenarios with Matchers
       scenario.subscriber.emojiSetsWatching.map(emojiSetsWatching => emojiResult(emojiSetsWatching)))
   }
 }
-

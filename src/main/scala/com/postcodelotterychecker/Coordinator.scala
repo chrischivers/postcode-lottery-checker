@@ -3,7 +3,10 @@ package com.postcodelotterychecker
 import java.util.UUID
 
 import cats.effect.IO
+import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
 import com.postcodelotterychecker.caching.RedisResultCache
+import com.postcodelotterychecker.checkers.CheckerRequestHandler
+import com.postcodelotterychecker.checkers.CheckerRequestHandler.{Request, Response}
 import com.postcodelotterychecker.db.SubscriberSchema
 import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
 import com.postcodelotterychecker.models.ResultTypes._
@@ -93,7 +96,7 @@ trait Coordinator extends StrictLogging {
   }
 }
 
-class _Coordinator extends Coordinator {
+class _Coordinator extends RequestHandler[Request, Response] with Coordinator {
   override val mainConfig = ConfigLoader.defaultConfig
   override val uuid = UUID.randomUUID().toString
 
@@ -216,6 +219,10 @@ class _Coordinator extends Coordinator {
     } yield ()).unsafeRunSync()
   }
 
-  startMaster
+//  startMaster
 
+  override def handleRequest(input: Request, context: Context) = {
+    startMaster
+    Response(true)
+  }
 }
