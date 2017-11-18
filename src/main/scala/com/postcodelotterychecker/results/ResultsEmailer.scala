@@ -57,7 +57,6 @@ trait ResultsEmailer {
   private def wonAnyCompetitions(subscriberResults: SubscriberResults): List[Competition] = {
 
     def hasSubscriberResultWon[R, W](subscriberResult: Option[SubscriberResult[R, W]]): Option[Competition] = {
-      println(subscriberResult)
       for {
         res <- subscriberResult
         won <- res.won
@@ -421,5 +420,4 @@ trait ResultsEmailer {
       |
     """.stripMargin
   }
-
 }

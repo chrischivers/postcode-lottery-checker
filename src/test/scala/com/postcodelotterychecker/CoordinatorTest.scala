@@ -42,8 +42,6 @@ class CoordinatorTest extends FlatSpec with SubscriberScenarios with Matchers wi
 
     writeWinningDataToCache(uuid, postcodeResultsCache, dinnerResultsCache, stackpotResultsCache, surveyDrawResultsCache, emojiResultsCache, delay = 10000)
 
-    println("After sleep")
-
     aggregateAndProcessResults().unsafeRunSync()
 
     stubEmailClient.emailsSent should have size 5

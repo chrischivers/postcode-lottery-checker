@@ -18,7 +18,7 @@ object Utils extends StrictLogging {
       } match {
         case Success(x) => x
         case Failure(e) if n < totalNumberOfAttempts => {
-          logger.error("Error occured during execution", e)
+          logger.error("Error occurred during execution", e)
           logger.info(s"Attempt ${n + 1} of $totalNumberOfAttempts failed. Retrying operation after $secondsBetweenAttempts seconds.")
           Thread.sleep(secondsBetweenAttempts * 1000)
           retryHelper(n + 1)(fn)

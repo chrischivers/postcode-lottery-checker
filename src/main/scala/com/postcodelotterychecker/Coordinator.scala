@@ -72,11 +72,13 @@ trait Coordinator extends StrictLogging {
       val run: IO[Unit] = for {
         winningResults <- resultsProcessor.aggregateResults(uuid)
         _ = if (!winningResults.allDefined && timeRemaining > 0) {
-          logger.info(s"Not all winning results defined [$winningResults]")
+          logger.info(s"Not all winning results defined Got the following: [$winningResults]")
           throw new RuntimeException("Blowing up...")
         }
-        subscribersList <- subscribersTable.getSubscribers
+        subscribersList <- subscribersTable.getSubscribers()
+        _ = logger.info(s"Subscribers fetched from DB: [$subscribersList]")
         subscribersResultsMap = resultsProcessor.mapSubscribersToResults(subscribersList, winningResults)
+        _ = logger.info(s"Subscribers results map: [$subscribersResultsMap]")
         numberEmailsSent <- resultsEmailer.sendEmails(subscribersResultsMap)
         _ = logger.info(s"$numberEmailsSent emails successfully sent")
       } yield ()

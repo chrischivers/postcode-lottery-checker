@@ -33,8 +33,6 @@ trait StackpotChecker extends CheckerRequestHandler[List[Postcode]] {
 
       val retrievedPostcodes = postcodeTags.map(el => {
         el.removeChild("span", 0)
-        println(s"Text content: ${el.getTextContent}")
-        println(s"trimmed postcode: ${Postcode(el.getTextContent).trim}")
         Postcode(el.getTextContent).trim
       }).filter(maybePostcode => maybePostcode.isValid)
 
