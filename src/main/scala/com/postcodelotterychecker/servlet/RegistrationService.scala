@@ -38,7 +38,7 @@ class RegistrationService(subscribersTable: SubscribersTable)(implicit execution
         .getOrElseF(NotFound())
 
     case request@POST -> Root / "register" =>
-      logger.info(s"Request Received: [${request.as[String].unsafeRunSync()]}")
+      logger.info(s"Request Received: [${request.as[String].unsafeRunSync()}]")
       request.decode[UrlForm] { m =>
         val email = m.getFirst("emailAddress")
         val postcodesWatching = m.get("postcodesWatching[]").toList.filterNot(_ == "").map(Postcode)
