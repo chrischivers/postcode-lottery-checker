@@ -1,6 +1,6 @@
 package com.postcodelotterychecker.results
 
-import com.postcodelotterychecker.{ConfigLoader, EmailerConfig}
+import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.models.Competitions._
 import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.Results.{SubscriberResult, SubscriberResults}

@@ -30,9 +30,9 @@ trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
       logger.debug(page.asXml().mkString)
       logger.debug("clicking link...")
 
-      page.getFirstByXPath[HtmlAnchor]("//a[@class='reveal btn-link']").click()
+      Option(page.getFirstByXPath[HtmlAnchor]("//a[@class='reveal btn-link']")).map(_.click())
 
-      logger.debug(page.asXml().mkString)
+      logger.info(page.asXml().mkString)
 
       val postcodeTagsFirstPass = page.getByXPath[HtmlElement]("//p[@class='postcode']").asScala
 

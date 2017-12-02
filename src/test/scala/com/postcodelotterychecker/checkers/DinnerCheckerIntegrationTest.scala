@@ -2,7 +2,6 @@ package com.postcodelotterychecker.checkers
 
 import com.postcodelotterychecker._
 import com.postcodelotterychecker.caching.RedisResultCache
-import com.postcodelotterychecker.checkers.{DinnerChecker, HtmlUnitWebClient}
 import com.postcodelotterychecker.models.DinnerUserName
 import com.postcodelotterychecker.models.ResultTypes.DinnerResultType
 import com.xebialabs.restito.builder.stub.StubHttp.whenHttp
