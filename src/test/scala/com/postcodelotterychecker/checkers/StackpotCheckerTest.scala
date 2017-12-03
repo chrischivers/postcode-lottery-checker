@@ -3,11 +3,8 @@ package com.postcodelotterychecker.checkers
 import java.util.UUID
 
 import cats.effect.IO
-import com.amazonaws.services.lambda.runtime.Context
 import com.postcodelotterychecker.ConfigLoader
 import com.postcodelotterychecker.caching.RedisResultCache
-import com.postcodelotterychecker.checkers.CheckerRequestHandler.Request
-import com.postcodelotterychecker.checkers.{HtmlUnitWebClient, StackpotChecker}
 import com.postcodelotterychecker.models.Postcode
 import com.postcodelotterychecker.models.ResultTypes.StackpotResultType
 import org.scalatest.mockito.MockitoSugar._

@@ -1,15 +1,24 @@
+package com.postcodelotterychecker.local
+
+import java.util.UUID
+
 import cats.effect.IO
 import com.postcodelotterychecker.caching.RedisResultCache
-import com.postcodelotterychecker.{CheckerConfig, _Coordinator}
 import com.postcodelotterychecker.checkers._
+import com.postcodelotterychecker.db.SubscriberSchema
+import com.postcodelotterychecker.db.sql.{PostgresDB, SubscribersTable}
+import com.postcodelotterychecker.models.ResultTypes._
 import com.postcodelotterychecker.models.{DinnerUserName, Emoji, Postcode}
+import com.postcodelotterychecker.results.{DefaultEmailClient, EmailClient, ResultsEmailer, ResultsProcessor}
+import com.postcodelotterychecker._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-object CoordinatorLocal extends App {
+object CoordinatorLocal {
 
-    val localCoordinator = new _Coordinator() {
+    def apply(): Coordinator = new Coordinator() {
         override def triggerCheckers(): IO[Unit] = {
 
           val postcodeChecker = new PostcodeChecker {
@@ -86,10 +95,41 @@ object CoordinatorLocal extends App {
 
           IO.unit
         }
+
+      override val mainConfig = ConfigLoader.defaultConfig
+      override val uuid = UUID.randomUUID().toString
+
+      val sqlDb = new PostgresDB(mainConfig.postgresDBConfig)
+      override val subscribersTable = new SubscribersTable(sqlDb, SubscriberSchema())
+
+      override val postcodeResultsCache = new RedisResultCache[Postcode] {
+        override val resultType = PostcodeResultType
+        override val config = mainConfig.redisConfig
+      }
+      override val dinnerResultsCache = new RedisResultCache[List[DinnerUserName]] {
+        override val resultType = DinnerResultType
+        override val config = mainConfig.redisConfig
+      }
+      override val stackpotResultsCache = new RedisResultCache[List[Postcode]] {
+        override val resultType = StackpotResultType
+        override val config = mainConfig.redisConfig
+      }
+      override val surveyDrawResultsCache = new RedisResultCache[Postcode] {
+        override val resultType = SurveyDrawResultType
+        override val config = mainConfig.redisConfig
+      }
+      override val emojiResultsCache = new RedisResultCache[Set[Emoji]] {
+        override val resultType = EmojiResultType
+        override val config = mainConfig.redisConfig
+      }
+
+      override val resultsProcessor = new ResultsProcessor {
+        override val redisConfig: RedisConfig = mainConfig.redisConfig
+      }
+
+      override val resultsEmailer = new ResultsEmailer {
+        override val emailClient: EmailClient = new DefaultEmailClient(mainConfig.emailerConfig)
+        override val emailerConfig = mainConfig.emailerConfig
+      }
     }
-
-
-
-      localCoordinator.startMaster
-
 }
