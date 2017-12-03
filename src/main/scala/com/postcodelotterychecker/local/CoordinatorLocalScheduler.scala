@@ -4,6 +4,7 @@ import cats.effect.IO
 import com.typesafe.scalalogging.StrictLogging
 import fs2.Scheduler
 import scala.concurrent.ExecutionContext.Implicits.global
+import java.util.Calendar
 
 import scala.concurrent.duration._
 
@@ -19,25 +20,24 @@ object CoordinatorLocalScheduler extends App with StrictLogging {
     } yield ()
   }
 
-  import java.util.Calendar
+//  val cal = Calendar.getInstance
+//  if (cal.get(Calendar.HOUR_OF_DAY) >= 17) cal.add(Calendar.DAY_OF_MONTH, 1)
+//  cal.set(Calendar.HOUR_OF_DAY, 17)
+//  cal.set(Calendar.MINUTE, 0)
+//
+//  val initialDelayBeforeStart =  cal.getTimeInMillis - System.currentTimeMillis()
+//
+//  logger.info(s"Sleeping for $initialDelayBeforeStart before starting")
+//  Thread.sleep(initialDelayBeforeStart)
 
-  val cal = Calendar.getInstance
-  if (cal.get(Calendar.HOUR_OF_DAY) >= 17) cal.add(Calendar.DAY_OF_MONTH, 1)
-  cal.set(Calendar.HOUR_OF_DAY, 17)
-  cal.set(Calendar.MINUTE, 0)
+  runLocalCoordinator.unsafeRunSync()
 
-  val initialDelayBeforeStart =  cal.getTimeInMillis - System.currentTimeMillis()
-
-  logger.info(s"Sleeping for $initialDelayBeforeStart before starting")
-  Thread.sleep(initialDelayBeforeStart)
-
-
-  val app: fs2.Stream[IO, Unit] = for {
-    scheduler <- Scheduler[IO](1)
-    result <- scheduler.awakeEvery[IO](24 hours)
-      .map( _ => runLocalCoordinator)
-  } yield result.unsafeRunSync()
-
-  app.run.unsafeRunSync()
+//  val app: fs2.Stream[IO, Unit] = for {
+//    scheduler <- Scheduler[IO](1)
+//    result <- scheduler.awakeEvery[IO](24 hours)
+//      .map( _ => runLocalCoordinator)
+//  } yield result.unsafeRunSync()
+//
+//  app.run.unsafeRunSync()
 
 }
