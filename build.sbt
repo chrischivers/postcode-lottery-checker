@@ -27,7 +27,8 @@ libraryDependencies ++= Seq(
   "com.github.etaty" %% "rediscala" % "1.8.0",
   "com.github.mauricio" % "postgresql-async_2.12" % "0.2.21",
   "org.mockito" % "mockito-core" % "2.11.0",
-  "commons-validator" % "commons-validator" % "1.6"
+  "commons-validator" % "commons-validator" % "1.6",
+  "com.internetitem" % "logback-elasticsearch-appender" % "1.6"
 )
 
 

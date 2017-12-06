@@ -19,25 +19,35 @@ object CoordinatorLocalScheduler extends App with StrictLogging {
     } yield ()
   }
 
-  import java.util.Calendar
+  args.toList.headOption.map(arg =>
+    if (arg == "start now") {
+      runLocalCoordinator
+    }
+  )
 
-  val cal = Calendar.getInstance
-  if (cal.get(Calendar.HOUR_OF_DAY) >= 17) cal.add(Calendar.DAY_OF_MONTH, 1)
-  cal.set(Calendar.HOUR_OF_DAY, 17)
-  cal.set(Calendar.MINUTE, 0)
-
-  val initialDelayBeforeStart =  cal.getTimeInMillis - System.currentTimeMillis()
-
-  logger.info(s"Sleeping for $initialDelayBeforeStart before starting")
-  Thread.sleep(initialDelayBeforeStart)
+  val waitTIme = calculateWaitTime()
+  logger.info(s"Sleeping for $waitTIme before starting")
+  Thread.sleep(waitTIme)
 
 
   val app: fs2.Stream[IO, Unit] = for {
+    _ <- fs2.Stream.eval(runLocalCoordinator)
     scheduler <- Scheduler[IO](1)
     result <- scheduler.awakeEvery[IO](24 hours)
       .map( _ => runLocalCoordinator)
   } yield result.unsafeRunSync()
 
   app.run.unsafeRunSync()
+
+  def calculateWaitTime(): Long = {
+    import java.util.Calendar
+
+    val cal = Calendar.getInstance
+    if (cal.get(Calendar.HOUR_OF_DAY) >= 17) cal.add(Calendar.DAY_OF_MONTH, 1)
+    cal.set(Calendar.HOUR_OF_DAY, 17)
+    cal.set(Calendar.MINUTE, 0)
+
+    cal.getTimeInMillis - System.currentTimeMillis()
+  }
 
 }
