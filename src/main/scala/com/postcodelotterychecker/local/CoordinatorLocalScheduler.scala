@@ -20,7 +20,7 @@ object CoordinatorLocalScheduler extends App with StrictLogging {
   }
 
   args.toList.headOption.map(arg =>
-    if (arg == "start now") {
+    if (arg == "now") {
       runLocalCoordinator
     }
   )
