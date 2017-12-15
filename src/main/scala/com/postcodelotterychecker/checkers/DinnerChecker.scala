@@ -25,7 +25,7 @@ trait DinnerChecker extends CheckerRequestHandler[List[DinnerUserName]] {
 
     val browser = JsoupBrowser()
     val doc = browser.get(webAddress)
-    val list = (doc >> texts(".name")).toSet.toList
+    val list = (doc >> elementList(".name")).map(_.text).distinct
     logger.info("Winning User names: " + list)
     if (list.isEmpty) throw new RuntimeException("No dinner winners found on webpage")
     list.map(str => DinnerUserName(str.toLowerCase))

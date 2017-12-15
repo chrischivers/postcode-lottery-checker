@@ -18,16 +18,16 @@ object CoordinatorLocalScheduler extends App with StrictLogging {
       _ = logger.info("Results processing complete")
     } yield ()
   }
-
-  args.toList.headOption.map(arg =>
-    if (arg == "now") {
+//
+//  args.toList.headOption.map(arg =>
+//    if (arg == "now") {
       runLocalCoordinator
-    }
-  )
-
-  val waitTIme = calculateWaitTime()
-  logger.info(s"Sleeping for $waitTIme before starting")
-  Thread.sleep(waitTIme)
+//    }
+//  )
+//
+//  val waitTIme = calculateWaitTime()
+//  logger.info(s"Sleeping for $waitTIme before starting")
+//  Thread.sleep(waitTIme)
 
 
   val app: fs2.Stream[IO, Unit] = for {

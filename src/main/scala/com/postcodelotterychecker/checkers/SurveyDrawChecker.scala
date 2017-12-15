@@ -11,6 +11,7 @@ import com.postcodelotterychecker.models.ResultTypes.{StackpotResultType, Survey
 import com.postcodelotterychecker.utils.Utils
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 
 trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
@@ -30,7 +31,7 @@ trait SurveyDrawChecker extends CheckerRequestHandler[Postcode] {
       logger.debug(page.asXml().mkString)
       logger.debug("clicking link...")
 
-      Option(page.getFirstByXPath[HtmlAnchor]("//a[@class='reveal btn-link']")).map(_.click())
+      Try(Option(page.getFirstByXPath[HtmlAnchor]("//a[@class='reveal btn-link']")).map(_.click()))
 
       logger.info(page.asXml().mkString)
 
